@@ -180,10 +180,30 @@ class P4(Source):
     def _sync(self, args):
         abandonOnFailure = (self.retry[1] <= 0) if self.retry else True
         d = self._dovccmd(['sync'] + args,
+                          collectStdout=True,
                           abandonOnFailure=abandonOnFailure)
 
+        def _force_sync_failed_files(stdout):
+           if stdout is not None:
+              force_sync_files = ''
+              for line in stdout.splitlines():
+                  match = re.search(r'^.*can\'t.*file (.*)$', line)
+                  if match:
+                      force_sync_files += match.group(1)
+                      if len(args) > 0:
+                              force_sync_files += args[0]
+                      force_sync_files += '\n'
+
+              if force_sync_files != '':
+                  force_sync_files = force_sync_files.encode('utf-8')
+
+                  return self._dovccmd(['-x', '-', 'sync', '-f'], collectStdout=True,initialStdin=force_sync_files)
+           return stdout
+
+        d.addCallback(_force_sync_failed_files)
+
         def _retry(res):
-            if self.stopped or res == 0:
+            if self.stopped or res is not None:
                 return res
             delay, repeats = self.retry
             if repeats > 0:
@@ -198,7 +218,9 @@ class P4(Source):
 
         if self.retry:
             d.addCallback(_retry)
+
         return d
+
 
     def finish(self, res):
         d = defer.succeed(res)
@@ -264,7 +286,10 @@ class P4(Source):
                     log.msg("P4:_dovccmd():Source step failed while running command %s" % cmd)
                 raise buildstep.BuildStepFailed()
             if collectStdout:
-                return cmd.stdout
+                if cmd.rc != 0:
+                    return None
+                else:
+                    return cmd.stdout
             else:
                 return cmd.rc
         d.addCallback(lambda _: evaluateCommand(cmd))
