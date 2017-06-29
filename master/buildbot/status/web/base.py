@@ -515,14 +515,18 @@ class BuildLineMixin:
             return [{
                 'repo': 'unknown, no information in build',
                 'codebase': '',
-                'rev': 'unknown'
+                'rev': 'unknown',
+                'request_revision': 'unknown',
+                'workspace_revision': 'unknown',
             }]
 
         if len(ss_list) == 1:
             return [{
                 'repo': ss_list[0].repository,
                 'codebase': ss_list[0].codebase,
-                'rev': all_got_revision.get(ss_list[0].codebase, "??")
+                'rev': all_got_revision.get(ss_list[0].codebase, "??"),
+                'request_revision': ss_list[0].request_revision,
+                'workspace_revision': ss_list[0].workspace_revision,
             }]
 
         # multiple-codebase configuration
@@ -534,7 +538,9 @@ class BuildLineMixin:
 
             rev = {
                 'repo': ss.repository,
-                'codebase': ss.codebase
+                'codebase': ss.codebase,
+                'request_revision': ss.request_revision,
+                'workspace_revision': ss.workspace_revision,
             }
 
             # show the most descriptive thing we can
@@ -554,7 +560,9 @@ class BuildLineMixin:
             rev_list = [{
                 'repo': 'unknown, no information in build',
                 'codebase': '',
-                'rev': 'most recent'
+                'rev': 'most recent',
+                'request_revision': 'most recent',
+                'workspace_revision': 'most recent',
             }]
 
         return rev_list

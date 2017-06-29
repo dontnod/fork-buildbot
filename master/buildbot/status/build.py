@@ -107,20 +107,21 @@ class BuildStatus(styles.Versioned, properties.PropertiesMixin):
 
     def getSourceStamps(self, absolute=False):
         sourcestamps = []
+        all_got_revisions = self.getAllGotRevisions() or {}
         if not absolute:
             sourcestamps.extend(self.sources)
         else:
-            all_got_revisions = self.getAllGotRevisions() or {}
             # always make a new instance
             for ss in self.sources:
-                if ss.codebase in all_got_revisions:
-                    got_revision = all_got_revisions[ss.codebase]
-                    sourcestamps.append(ss.getAbsoluteSourceStamp(got_revision))
-                else:
-                    # No absolute revision information available
-                    # Probably build has been stopped before ending all sourcesteps
-                    # Return a clone with original revision
-                    sourcestamps.append(ss.clone())
+                sourcestamps.append(ss.clone())
+
+        for ss in sourcestamps:
+            ss.request_revision = ss.revision
+            if ss.codebase in all_got_revisions:
+                ss.workspace_revision = all_got_revisions[ss.codebase]
+                if absolute:
+                    ss.revision = all_got_revisions[ss.codebase]
+
         return sourcestamps
 
     def getReason(self):
