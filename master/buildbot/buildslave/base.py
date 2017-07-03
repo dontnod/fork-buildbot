@@ -14,6 +14,7 @@
 # Portions Copyright Buildbot Team Members
 # Portions Copyright Canonical Ltd. 2009
 
+import os
 import time
 
 from email.message import Message
@@ -54,6 +55,9 @@ class AbstractBuildSlave(config.ReconfigurableServiceMixin, pb.Avatar,
     implements(IBuildSlave)
     keepalive_timer = None
     keepalive_interval = None
+    keepalive_deferred = None
+    keepalive_is_okay = True
+    keepalive_attempt = 0
 
     # reconfig slaves after builders
     reconfig_priority = 64
@@ -318,8 +322,27 @@ class AbstractBuildSlave(config.ReconfigurableServiceMixin, pb.Avatar,
                                                  self.doKeepalive)
         if not self.slave:
             return
-        d = self.slave.callRemote("print", "Received keepalive from master")
-        d.addErrback(log.msg, "Keepalive failed for '%s'" % (self.slavename, ))
+        if self.keepalive_is_okay:
+            self.keepalive_attempt = 1
+        else:
+            self.keepalive_deferred.cancel()
+            if self.keepalive_attempt >= 5:
+                self.disconnect()
+                return
+            self.keepalive_attempt += 1
+
+        self.keepalive_is_okay = False
+        self.keepalive_deferred = self.slave.callRemote("print", "Received keepalive from master")
+        self.keepalive_deferred.addCallback(self.onKeepaliveSuccess)
+        self.keepalive_deferred.addErrback(self.onKeepaliveError)
+
+    def onKeepaliveSuccess(self, result):
+        self.keepalive_is_okay = True
+
+    def onKeepaliveError(self, exception):
+        self.keepalive_is_okay = False
+        log.msg(("Keepalive failed for '{slave}' on attempt {attempt}" + os.linesep + "{exception}")
+            .format(slave = self.slavename, attempt = self.keepalive_attempt, exception = exception.getTraceback()))
 
     def stopKeepaliveTimer(self):
         if self.keepalive_timer:
@@ -329,6 +352,10 @@ class AbstractBuildSlave(config.ReconfigurableServiceMixin, pb.Avatar,
         assert self.keepalive_interval
         log.msg("Starting buildslave keepalive timer for '%s'" %
                 (self.slavename, ))
+
+        self.keepalive_deferred = None
+        self.keepalive_attempt = 0
+        self.keepalive_is_okay = True
         self.doKeepalive()
 
     def isConnected(self):
