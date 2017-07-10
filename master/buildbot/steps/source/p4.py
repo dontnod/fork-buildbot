@@ -123,12 +123,16 @@ class P4(Source):
         if self.use_tickets and self.p4passwd:
             d.addCallback(self._acquireTicket)
 
+        d.addCallback(self.parseGotRevision)
+
         if self.mode == 'full':
             d.addCallback(self.full)
         elif self.mode == 'incremental':
             d.addCallback(self.incremental)
 
-        d.addCallback(self.parseGotRevision)
+        # Make sure we return 0 instead of None to show success
+        d.addCallback(lambda _: 0)
+
         d.addCallback(self.finish)
         d.addErrback(self.failed)
         return d
@@ -378,7 +382,11 @@ class P4(Source):
         yield self._dovccmd(['login'], initialStdin=initialStdin)
 
     def parseGotRevision(self, _):
-        command = self._buildVCCommand(['changes', '-m1', '#have'])
+        if self.revision:
+            self.updateSourceProperty('got_revision', self.revision)
+            return 0
+
+        command = self._buildVCCommand(['changes', '-s', 'submitted', '-m1'])
 
         cmd = buildstep.RemoteShellCommand(self.workdir, command,
                                            env=self.env,
@@ -390,19 +398,20 @@ class P4(Source):
 
         def _setrev(_):
             stdout = cmd.stdout.strip()
-            # Example output from p4 changes -m1 #have
+            # Example output from p4 changes -s submitted -m1
             #     Change 212798 on 2012/04/13 by user@user-unix-bldng2 'change to pickup build'
             revision = stdout.split()[1]
             try:
                 int(revision)
             except ValueError:
                 msg = ("p4.parseGotRevision unable to parse output "
-                       "of 'p4 changes -m1 \"#have\"': '%s'" % stdout)
+                       "of 'p4 changes -s submitted -m1': '%s'" % stdout)
                 log.msg(msg)
                 raise buildstep.BuildStepFailed()
 
             if debug_logging:
                 log.msg("Got p4 revision %s" % (revision,))
+            self.revision = revision
             self.updateSourceProperty('got_revision', revision)
             return 0
         d.addCallback(lambda _: _setrev(cmd.rc))
