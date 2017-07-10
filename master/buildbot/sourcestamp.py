@@ -68,8 +68,6 @@ class SourceStamp(util.ComparableMixin, styles.Versioned):
     # all seven of these are publicly visible attributes
     branch = None
     revision = None
-    request_revision = None
-    workspace_revision = None
     patch = None
     patch_info = None
     changes = ()
@@ -233,14 +231,11 @@ class SourceStamp(util.ComparableMixin, styles.Versioned):
 
     def clone(self):
         # Create an exact but identityless copy
-        other = SourceStamp(branch=self.branch, revision=self.revision,
+        return SourceStamp(branch=self.branch, revision=self.revision,
                            patch=self.patch, repository=self.repository,
                            codebase=self.codebase, patch_info=self.patch_info,
                            project=self.project, changes=self.changes,
                            _ignoreChanges=True)
-        other.request_revision = self.request_revision
-        other.workspace_revision = self.workspace_revision
-        return other
 
     def getAbsoluteSourceStamp(self, got_revision):
         cloned = self.clone()
@@ -269,8 +264,6 @@ class SourceStamp(util.ComparableMixin, styles.Versioned):
         result = {}
         # Constant
         result['revision'] = self.revision
-        result['request_revision'] = self.request_revision
-        result['workspace_revision'] = self.workspace_revision
 
         # TODO(maruel): Make the patch content a suburl.
         result['hasPatch'] = self.patch is not None
