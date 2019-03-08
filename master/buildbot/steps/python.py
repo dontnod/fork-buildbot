@@ -192,8 +192,8 @@ class PyLint(ShellCommand):
 
     _re_groupname = 'errtype'
     _msgtypes_re_str = '(?P<%s>[%s])' % (_re_groupname, ''.join(MESSAGES.keys()))
-    _default_line_re = re.compile(r'^%s(\d{4})?: *\d+(,\d+)?:.+' % _msgtypes_re_str)
-    _parseable_line_re = re.compile(r'[^:]+:\d+: \[%s(\d{4})?[,\]] .+' % _msgtypes_re_str)
+    _default_line_re = re.compile(r'[^:]+:\d+:\d+: %s(\d+): .+' % _msgtypes_re_str)
+    _parseable_line_re = re.compile(r'[^:]+:\d+: \[%s(\d+)[^\]]*\] .+' % _msgtypes_re_str)
 
     def createSummary(self, log):
         counts = {}
