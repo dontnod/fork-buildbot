@@ -157,7 +157,7 @@ class Properties(util.ComparableMixin):
         return defer.maybeDeferred(renderable.getRenderingFor, self)
 
 
-class PropertiesMixin:
+class PropertiesMixin(object):
 
     """
     A mixin to add L{IProperties} methods to a class which does not implement

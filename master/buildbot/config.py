@@ -633,7 +633,7 @@ class MasterConfig(object):
             error("debug client is configured, but c['protocols'] not")
 
 
-class BuilderConfig:
+class BuilderConfig(object):
 
     def __init__(self, name=None, slavename=None, slavenames=None,
                  builddir=None, slavebuilddir=None, factory=None,
@@ -756,7 +756,7 @@ class BuilderConfig:
         return rv
 
 
-class ReconfigurableServiceMixin:
+class ReconfigurableServiceMixin(object):
 
     reconfig_priority = 128
 

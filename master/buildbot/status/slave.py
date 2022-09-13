@@ -24,7 +24,7 @@ from buildbot.util.eventual import eventually
 from zope.interface import implements
 
 
-class SlaveStatus:
+class SlaveStatus(object):
     implements(interfaces.ISlaveStatus)
 
     connected = False

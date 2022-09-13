@@ -77,11 +77,11 @@ def formatInterval(eta):
     return ", ".join(eta_parts)
 
 
-class ComparableMixin:
+class ComparableMixin(object):
 
     compare_attrs = []
 
-    class _None:
+    class _None(object):
         pass
 
     def __hash__(self):
@@ -166,7 +166,7 @@ except AttributeError:
 # is always false.
 
 
-class NotABranch:
+class NotABranch(object):
 
     def __nonzero__(self):
         return False

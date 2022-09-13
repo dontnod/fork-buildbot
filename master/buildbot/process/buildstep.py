@@ -83,7 +83,7 @@ class _BuildStepFactory(util.ComparableMixin):
             raise
 
 
-class BuildStep(object, properties.PropertiesMixin):
+class BuildStep(properties.PropertiesMixin):
 
     implements(interfaces.IBuildStep)
 
