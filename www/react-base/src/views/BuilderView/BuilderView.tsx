@@ -17,11 +17,13 @@
 
 import {observer} from "mobx-react";
 import {useState} from "react";
+import {Card} from "react-bootstrap";
 import {buildbotSetupPlugin} from "buildbot-plugin-support";
 import {
   Build,
   Builder,
   Buildrequest,
+  Worker,
   DataCollection, DataMultiCollection,
   Forcescheduler,
   Project,
@@ -29,9 +31,10 @@ import {
   useDataApiQuery,
   useDataApiSingleElementQuery
 } from "buildbot-data-js";
-import {TopbarAction, useTopbarItems, useTopbarActions, TopbarItem} from "buildbot-ui";
+import {TopbarAction, useTopbarItems, useTopbarActions, TopbarItem, WorkerBadge} from "buildbot-ui";
 import {BuildsTable} from "../../components/BuildsTable/BuildsTable";
 import {BuildRequestsTable} from "../../components/BuildrequestsTable/BuildrequestsTable";
+import {LoadingSpan} from "../../components/LoadingSpan/LoadingSpan";
 import {useNavigate, useParams} from "react-router-dom";
 import {AlertNotification} from "../../components/AlertNotification/AlertNotification";
 import {ForceBuildModal} from "../../components/ForceBuildModal/ForceBuildModal";
@@ -123,11 +126,18 @@ export const BuilderView = observer(() => {
     : Project.getAll(accessor, {id: builder.projectid.toString()})
   }));
 
+  const workersQuery = useDataApiQuery(() =>
+  buildersQuery.getRelated(builder => builder.getWorkers({query: {
+      order: 'name'
+    }
+  })));
+
   const builder = buildersQuery.getNthOrNull(0);
   const builds = buildsQuery.getParentCollectionOrEmpty(builderid.toString());
   const buildrequests = buildrequestsQuery.getParentCollectionOrEmpty(builderid.toString());
   const forceschedulers = forceSchedulersQuery.getParentCollectionOrEmpty(builderid.toString());
   const project = projectsQuery.getNthOrNull(0);
+  const workers = workersQuery.getParentCollectionOrEmpty(builderid.toString());
 
   const [isCancelling, setIsCancelling] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -199,6 +209,19 @@ export const BuilderView = observer(() => {
         : <></>
       }
       <BuildRequestsTable buildrequests={buildrequests}/>
+      <Card>
+        <Card.Body>
+          <Card.Title>Workers</Card.Title>
+          <div className="bb-builder-workers-container">
+            {
+              !workers.isResolved() ? <LoadingSpan/> :
+              workers.array.map(worker => (
+                <WorkerBadge key={worker.name} worker={worker} showWorkerName={true}/>
+              ))
+            }
+          </div>
+        </Card.Body>
+      </Card>
       <BuildsTable builds={builds} builders={null}/>
       {shownForceScheduler !== null
         ? <ForceBuildModal scheduler={shownForceScheduler} builderid={builderid}
