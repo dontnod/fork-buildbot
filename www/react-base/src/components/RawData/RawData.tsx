@@ -55,6 +55,9 @@ export const RawData = ({data}: RawDataProps) => {
     if (value === null) {
       return <dd>{"null"}&nbsp;</dd>;
     }
+    else if (value === undefined) {
+      return <dd>{"undefined"}&nbsp;</dd>;
+    }
     else if (isArrayOfObjectsRaw(value)) {
       return (
         <dd>
