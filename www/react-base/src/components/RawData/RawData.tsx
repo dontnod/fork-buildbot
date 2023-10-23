@@ -52,10 +52,10 @@ export const RawData = ({data}: RawDataProps) => {
   }
 
   const renderDataElement = (value: any) => {
-    if (!isObjectRaw(value) && !isArrayOfObjectsRaw(value)) {
-      return <dd>{value === null ? "null" : value.toString()}&nbsp;</dd>;
+    if (value === null) {
+      return <dd>{"null"}&nbsp;</dd>;
     }
-    if (isArrayOfObjectsRaw(value)) {
+    else if (isArrayOfObjectsRaw(value)) {
       return (
         <dd>
           <ArrowExpander isExpanded={isExpanded} setIsExpanded={setIsExpanded}/>
@@ -63,7 +63,7 @@ export const RawData = ({data}: RawDataProps) => {
         </dd>
       );
     }
-    if (isObjectRaw(value)) {
+    else if (isObjectRaw(value)) {
       return (
         <dd>
           <ArrowExpander isExpanded={isExpanded} setIsExpanded={setIsExpanded}/>
@@ -71,6 +71,8 @@ export const RawData = ({data}: RawDataProps) => {
         </dd>
       )
     }
+
+    return <dd>{value.toString()}&nbsp;</dd>;
   }
 
   const renderElements = () => {
