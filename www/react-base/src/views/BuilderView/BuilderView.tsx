@@ -23,17 +23,14 @@ import {
   Build,
   Builder,
   Buildrequest,
-  Worker,
-  DataCollection, DataMultiCollection,
+  DataCollection,
   Forcescheduler,
   Project,
   useDataAccessor,
   useDataApiQuery,
-  useDataApiSingleElementQuery
 } from "buildbot-data-js";
-import {TopbarAction, useTopbarItems, useTopbarActions, TopbarItem, WorkerBadge} from "buildbot-ui";
+import {TopbarAction, useTopbarItems, useTopbarActions, WorkerBadge} from "buildbot-ui";
 import {BuildsTable} from "../../components/BuildsTable/BuildsTable";
-import {BuildRequestsTable} from "../../components/BuildrequestsTable/BuildrequestsTable";
 import {LoadingSpan} from "../../components/LoadingSpan/LoadingSpan";
 import {useNavigate, useParams} from "react-router-dom";
 import {AlertNotification} from "../../components/AlertNotification/AlertNotification";
@@ -41,6 +38,7 @@ import {ForceBuildModal} from "../../components/ForceBuildModal/ForceBuildModal"
 import {TableHeading} from "../../components/TableHeading/TableHeading";
 import {FaStop, FaSpinner} from "react-icons/fa";
 import {buildTopbarItemsForBuilder} from "../../util/TopbarUtils";
+import {PendingBuildRequestsTable} from "../../components/PendingBuildRequestsTable/PendingBuildRequestsTable";
 
 const anyCancellableBuilds = (builds: DataCollection<Build>,
                               buildrequests: DataCollection<Buildrequest>) => {
@@ -208,7 +206,12 @@ export const BuilderView = observer(() => {
         ? renderDescription(builder)
         : <></>
       }
-      <BuildRequestsTable buildrequests={buildrequests}/>
+      <Card>
+        <Card.Body>
+          <Card.Title>Pending Build Requests</Card.Title>
+          <PendingBuildRequestsTable buildRequestsQuery={buildrequests}/>
+        </Card.Body>
+      </Card>
       <Card>
         <Card.Body>
           <Card.Title>Workers</Card.Title>
