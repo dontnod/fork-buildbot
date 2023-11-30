@@ -55,6 +55,7 @@ import {
   useFavIcon,
   useTopbarItems,
   useTopbarActions,
+  durationFormat,
 } from "buildbot-ui";
 import {RawData} from "../../components/RawData/RawData";
 import {PropertiesTable} from "../../components/PropertiesTable/PropertiesTable";
@@ -313,6 +314,22 @@ const BuildView = observer(() => {
       return <TableHeading>Buildrequest:</TableHeading>;
     }
 
+    let buildTimings = null;
+    if (build !== null) {
+      const timingsObject: {[key: string] : string} = {
+        started_at: dateFormat(build.started_at),
+      };
+      if (build.complete_at !== null) {
+        timingsObject['complete_at'] = dateFormat(build.complete_at);
+        timingsObject['duration'] = durationFormat(build.complete_at - build.started_at);
+      }
+
+      buildTimings = (<>
+        <TableHeading>Build:</TableHeading>
+        <RawData data={timingsObject} />
+      </>);
+    }
+
     return (
       <>
         <TableHeading>
@@ -321,6 +338,7 @@ const BuildView = observer(() => {
         <RawData data={buildrequest.toObject()}/>
         <TableHeading>Buildset:</TableHeading>
         <RawData data={buildset.toObject()}/>
+        {buildTimings ? buildTimings : <></>}
       </>
     );
   }
