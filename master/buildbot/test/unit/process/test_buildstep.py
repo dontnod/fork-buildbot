@@ -31,6 +31,7 @@ from buildbot.plugins import util
 from buildbot.process import buildstep
 from buildbot.process import properties
 from buildbot.process import remotecommand
+from buildbot.process.buildstep import create_step_from_step_or_factory
 from buildbot.process.properties import renderer
 from buildbot.process.results import ALL_RESULTS
 from buildbot.process.results import CANCELLED
@@ -52,7 +53,9 @@ from buildbot.test.steps import ExpectStat
 from buildbot.test.steps import TestBuildStepMixin
 from buildbot.test.util import config
 from buildbot.test.util import interfaces
+from buildbot.test.util.warnings import assertProducesWarning
 from buildbot.util.eventual import eventually
+from buildbot.warnings import DeprecatedApiWarning
 
 
 class NewStyleStep(buildstep.BuildStep):
@@ -174,8 +177,46 @@ class TestBuildStep(TestBuildStepMixin, config.ConfigErrorsMixin,
                                           "a list of result ids or boolean but it is 2"):
             buildstep.BuildStep(updateBuildSummaryPolicy=FAILURE)
 
+    class RecordingBuildStep(buildstep.BuildStep):
+        def __init__(self, record_target=None, arg=None, **kwargs):
+            super().__init__(**kwargs)
+            self.record_target = record_target
+            self.arg = arg
+
+        def run(self):
+            self.record_target.append(self.arg)
+            return SUCCESS
+
+    @defer.inlineCallbacks
+    def test_arg_changes(self):
+        recorded_arg = []
+
+        step = self.RecordingBuildStep(record_target=recorded_arg, arg="orig")
+        self.setup_step(step)
+
+        with assertProducesWarning(DeprecatedApiWarning):
+            step.arg = "changed"
+
+        self.expect_outcome(result=SUCCESS)
+        yield self.run_step()
+
+        self.assertEqual(recorded_arg, ["orig"])
+
+    @defer.inlineCallbacks
+    def test_arg_changes_set_step_arg(self):
+        recorded_arg = []
+
+        step = self.RecordingBuildStep(record_target=recorded_arg, arg="orig")
+        step.set_step_arg("arg", "changed")
+        self.setup_step(step)
+
+        self.expect_outcome(result=SUCCESS)
+        yield self.run_step()
+
+        self.assertEqual(recorded_arg, ["changed"])
+
     def test_getProperty(self):
-        bs = buildstep.BuildStep()
+        bs = create_step_from_step_or_factory(buildstep.BuildStep())
         bs.build = fakebuild.FakeBuild()
         props = bs.build.properties = mock.Mock()
         bs.getProperty("xyz", 'b')
@@ -184,7 +225,7 @@ class TestBuildStep(TestBuildStepMixin, config.ConfigErrorsMixin,
         props.getProperty.assert_called_with("xyz", None)
 
     def test_setProperty(self):
-        bs = buildstep.BuildStep()
+        bs = create_step_from_step_or_factory(buildstep.BuildStep())
         bs.build = fakebuild.FakeBuild()
         props = bs.build.properties = mock.Mock()
         bs.setProperty("x", "y", "t")
@@ -260,36 +301,65 @@ class TestBuildStep(TestBuildStepMixin, config.ConfigErrorsMixin,
         self.assertTrue(real_worker_lock.locks['workername'].isAvailable(self, lock_accesses[1]))
 
     @defer.inlineCallbacks
+    def test_regular_locks_skip_step(self):
+        # BuildStep should not try to acquire locks when it's skipped
+        lock = locks.MasterLock("masterlock")
+        lock_access = locks.LockAccess(lock, "exclusive")
+
+        self.setup_step(buildstep.BuildStep(
+            locks=[locks.LockAccess(lock, "counting")],
+            doStepIf=False
+        ))
+
+        real_lock = yield self.build.builder.botmaster.getLockByID(lock, 0)
+        real_lock.claim(self, lock_access)
+
+        self.expect_outcome(result=SKIPPED)
+        yield self.run_step()
+
+    @defer.inlineCallbacks
     def test_cancelWhileLocksAvailable(self):
 
         def _owns_lock(step, lock):
-            access = [step_access for step_lock, step_access in step.locks if step_lock == lock][0]
+            access = [
+                step_access for step_lock, step_access in step._locks_to_acquire
+                if step_lock == lock
+            ][0]
             return lock.isOwner(step, access)
 
         def _lock_available(step, lock):
-            access = [step_access for step_lock, step_access in step.locks if step_lock == lock][0]
+            access = [
+                step_access for step_lock, step_access in step._locks_to_acquire
+                if step_lock == lock
+            ][0]
             return lock.isAvailable(step, access)
 
         lock1 = locks.MasterLock("masterlock1")
-        real_lock1 = locks.RealMasterLock(lock1)
         lock2 = locks.MasterLock("masterlock2")
-        real_lock2 = locks.RealMasterLock(lock2)
 
         stepa = self.setup_step(self.FakeBuildStep(locks=[
-            (real_lock1, locks.LockAccess(lock1, 'exclusive'))
+            locks.LockAccess(lock1, 'exclusive')
         ]))
         stepb = self.setup_step(self.FakeBuildStep(locks=[
-            (real_lock2, locks.LockAccess(lock2, 'exclusive'))
+            locks.LockAccess(lock2, 'exclusive')
         ]))
 
         stepc = self.setup_step(self.FakeBuildStep(locks=[
-            (real_lock1, locks.LockAccess(lock1, 'exclusive')),
-            (real_lock2, locks.LockAccess(lock2, 'exclusive'))
+            locks.LockAccess(lock1, 'exclusive'),
+            locks.LockAccess(lock2, 'exclusive')
         ]))
         stepd = self.setup_step(self.FakeBuildStep(locks=[
-            (real_lock1, locks.LockAccess(lock1, 'exclusive')),
-            (real_lock2, locks.LockAccess(lock2, 'exclusive'))
+            locks.LockAccess(lock1, 'exclusive'),
+            locks.LockAccess(lock2, 'exclusive')
         ]))
+
+        real_lock1 = yield self.build.builder.botmaster.getLockByID(lock1, 0)
+        real_lock2 = yield self.build.builder.botmaster.getLockByID(lock2, 0)
+
+        yield stepa._setup_locks()
+        yield stepb._setup_locks()
+        yield stepc._setup_locks()
+        yield stepd._setup_locks()
 
         # Start all the steps
         yield stepa.acquireLocks()
@@ -365,7 +435,7 @@ class TestBuildStep(TestBuildStepMixin, config.ConfigErrorsMixin,
 
     @defer.inlineCallbacks
     def test_runCommand(self):
-        bs = buildstep.BuildStep()
+        bs = create_step_from_step_or_factory(buildstep.BuildStep())
         bs.worker = worker.FakeWorker(master=None)  # master is not used here
         bs.remote = 'dummy'
         bs.build = fakebuild.FakeBuild()
@@ -410,12 +480,13 @@ class TestBuildStep(TestBuildStepMixin, config.ConfigErrorsMixin,
 
         @defer.inlineCallbacks
         def on_command(cmd):
-            cmd.conn.set_expect_interrupt()
-            cmd.conn.set_block_on_interrupt()
+            conn = cmd.conn
+            conn.set_expect_interrupt()
+            conn.set_block_on_interrupt()
             d1 = step.interrupt('interrupt reason')
             d2 = step.interrupt(failure.Failure(error.ConnectionLost()))
 
-            cmd.conn.unblock_waiters()
+            conn.unblock_waiters()
             yield d1
             yield d2
 
@@ -614,7 +685,7 @@ class TestBuildStep(TestBuildStepMixin, config.ConfigErrorsMixin,
                    lambda self: defer.succeed({'step': 'C'}))
         self.patch(NewStyleStep, 'getResultSummary',
                    lambda self: defer.succeed({'step': 'CS', 'build': 'CB'}))
-        step = NewStyleStep()
+        step = create_step_from_step_or_factory(NewStyleStep())
         step.master = fakemaster.make_master(self, wantData=True, wantDb=True)
         step.stepid = 13
         step.build = fakebuild.FakeBuild()
@@ -685,74 +756,74 @@ class TestBuildStep(TestBuildStepMixin, config.ConfigErrorsMixin,
         self.assertEqual(got, exp)
 
     def test_getCurrentSummary(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.description = None
         self.checkSummary(st.getCurrentSummary(), 'running')
 
     def test_getCurrentSummary_description(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.description = 'fooing'
         self.checkSummary(st.getCurrentSummary(), 'fooing')
 
     def test_getCurrentSummary_descriptionSuffix(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.description = 'fooing'
         st.descriptionSuffix = 'bar'
         self.checkSummary(st.getCurrentSummary(), 'fooing bar')
 
     def test_getCurrentSummary_description_list(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.description = ['foo', 'ing']
         self.checkSummary(st.getCurrentSummary(), 'foo ing')
 
     def test_getCurrentSummary_descriptionSuffix_list(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.results = SUCCESS
         st.description = ['foo', 'ing']
         st.descriptionSuffix = ['bar', 'bar2']
         self.checkSummary(st.getCurrentSummary(), 'foo ing bar bar2')
 
     def test_getResultSummary(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.results = SUCCESS
         st.description = None
         self.checkSummary(st.getResultSummary(), 'finished')
 
     def test_getResultSummary_description(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.results = SUCCESS
         st.description = 'fooing'
         self.checkSummary(st.getResultSummary(), 'fooing')
 
     def test_getResultSummary_descriptionDone(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.results = SUCCESS
         st.description = 'fooing'
         st.descriptionDone = 'fooed'
         self.checkSummary(st.getResultSummary(), 'fooed')
 
     def test_getResultSummary_descriptionSuffix(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.results = SUCCESS
         st.description = 'fooing'
         st.descriptionSuffix = 'bar'
         self.checkSummary(st.getResultSummary(), 'fooing bar')
 
     def test_getResultSummary_descriptionDone_and_Suffix(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.results = SUCCESS
         st.descriptionDone = 'fooed'
         st.descriptionSuffix = 'bar'
         self.checkSummary(st.getResultSummary(), 'fooed bar')
 
     def test_getResultSummary_description_list(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.results = SUCCESS
         st.description = ['foo', 'ing']
         self.checkSummary(st.getResultSummary(), 'foo ing')
 
     def test_getResultSummary_descriptionSuffix_list(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.results = SUCCESS
         st.description = ['foo', 'ing']
         st.descriptionSuffix = ['bar', 'bar2']
@@ -760,7 +831,7 @@ class TestBuildStep(TestBuildStepMixin, config.ConfigErrorsMixin,
 
     @defer.inlineCallbacks
     def test_getResultSummary_descriptionSuffix_failure(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.results = FAILURE
         st.description = 'fooing'
         self.checkSummary((yield st.getBuildResultSummary()), 'fooing (failure)',
@@ -769,7 +840,7 @@ class TestBuildStep(TestBuildStepMixin, config.ConfigErrorsMixin,
 
     @defer.inlineCallbacks
     def test_getResultSummary_descriptionSuffix_skipped(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.results = SKIPPED
         st.description = 'fooing'
         self.checkSummary((yield st.getBuildResultSummary()), 'fooing (skipped)')
@@ -777,7 +848,7 @@ class TestBuildStep(TestBuildStepMixin, config.ConfigErrorsMixin,
 
     @defer.inlineCallbacks
     def test_getResultSummary_description_failure_timed_out(self):
-        st = buildstep.BuildStep()
+        st = create_step_from_step_or_factory(buildstep.BuildStep())
         st.results = FAILURE
         st.description = "fooing"
         st.timed_out = True
@@ -814,7 +885,7 @@ class TestBuildStep(TestBuildStepMixin, config.ConfigErrorsMixin,
 
     @defer.inlineCallbacks
     def testRunRaisesException(self):
-        step = NewStyleStep()
+        step = create_step_from_step_or_factory(NewStyleStep())
         step.master = mock.Mock()
         step.build = mock.Mock()
         step.build.builder.botmaster.getLockFromLockAccesses = mock.Mock(return_value=[])
