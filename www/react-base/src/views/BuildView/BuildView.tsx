@@ -55,7 +55,6 @@ import {
   useFavIcon,
   useTopbarItems,
   useTopbarActions,
-  durationFormat,
 } from "buildbot-ui";
 import {RawData} from "../../components/RawData/RawData";
 import {PropertiesTable} from "../../components/PropertiesTable/PropertiesTable";
@@ -64,6 +63,7 @@ import {BuildSummary} from "../../components/BuildSummary/BuildSummary";
 import {Tab, Table, Tabs} from "react-bootstrap";
 import {TableHeading} from "../../components/TableHeading/TableHeading";
 import {buildTopbarItemsForBuilder} from "../../util/TopbarUtils";
+import moment from 'moment';
 
 const buildTopbarActions = (build: Build | null, isRebuilding: boolean, isStopping: boolean,
                             doRebuild: () => void, doStop: () => void) => {
@@ -323,7 +323,10 @@ const BuildView = observer(() => {
       };
       if (build.complete_at !== null) {
         timingsObject['complete_at'] = dateFormat(build.complete_at);
-        timingsObject['duration'] = durationFormat(build.complete_at - build.started_at);
+
+        const buildDuration = moment.duration((build.complete_at - build.started_at) * 1000);
+        const buildDurationUTC = moment.utc(buildDuration.asMilliseconds());
+        timingsObject['duration'] = buildDurationUTC.format("HH:mm:ss");
       }
 
       buildTimings = (<>
