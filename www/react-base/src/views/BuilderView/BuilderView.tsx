@@ -17,7 +17,6 @@
 
 import {observer} from "mobx-react";
 import {useState} from "react";
-import {Card} from "react-bootstrap";
 import {buildbotSetupPlugin} from "buildbot-plugin-support";
 import {
   Build,
@@ -31,14 +30,15 @@ import {
 } from "buildbot-data-js";
 import {TopbarAction, useTopbarItems, useTopbarActions, WorkerBadge} from "buildbot-ui";
 import {BuildsTable} from "../../components/BuildsTable/BuildsTable";
-import {LoadingSpan} from "../../components/LoadingSpan/LoadingSpan";
+import {BuildRequestsTable} from "../../components/BuildrequestsTable/BuildrequestsTable";
 import {useNavigate, useParams} from "react-router-dom";
 import {AlertNotification} from "../../components/AlertNotification/AlertNotification";
 import {ForceBuildModal} from "../../components/ForceBuildModal/ForceBuildModal";
 import {TableHeading} from "../../components/TableHeading/TableHeading";
 import {FaStop, FaSpinner} from "react-icons/fa";
 import {buildTopbarItemsForBuilder} from "../../util/TopbarUtils";
-import {PendingBuildRequestsTable} from "../../components/PendingBuildRequestsTable/PendingBuildRequestsTable";
+import { Tab, Tabs } from "react-bootstrap";
+import { LoadingSpan } from "../../components/LoadingSpan/LoadingSpan";
 
 const anyCancellableBuilds = (builds: DataCollection<Build>,
                               buildrequests: DataCollection<Buildrequest>) => {
@@ -125,7 +125,7 @@ export const BuilderView = observer(() => {
   }));
 
   const workersQuery = useDataApiQuery(() =>
-  buildersQuery.getRelated(builder => builder.getWorkers({query: {
+    buildersQuery.getRelated(builder => builder.getWorkers({query: {
       order: 'name'
     }
   })));
@@ -199,6 +199,18 @@ export const BuilderView = observer(() => {
     }
   };
 
+  const renderWorkers = () => {
+    return (
+    <ul className="list-inline bb-builder-workers-container">
+    {
+      !workers.isResolved() ? <LoadingSpan/> :
+      workers.array.map(worker => (
+        <li><WorkerBadge key={worker.name} worker={worker} showWorkerName={true}/></li>
+      ))
+    }
+    </ul>);
+  };
+
   return (
     <div className="container">
       <AlertNotification text={errorMsg}/>
@@ -206,25 +218,17 @@ export const BuilderView = observer(() => {
         ? renderDescription(builder)
         : <></>
       }
-      <Card>
-        <Card.Body>
-          <Card.Title>Pending Build Requests</Card.Title>
-          <PendingBuildRequestsTable buildRequestsQuery={buildrequests}/>
-        </Card.Body>
-      </Card>
-      <Card>
-        <Card.Body>
-          <Card.Title>Workers</Card.Title>
-          <div className="bb-builder-workers-container">
-            {
-              !workers.isResolved() ? <LoadingSpan/> :
-              workers.array.map(worker => (
-                <WorkerBadge key={worker.name} worker={worker} showWorkerName={true}/>
-              ))
-            }
-          </div>
-        </Card.Body>
-      </Card>
+      <div>
+        <Tabs defaultActiveKey={1}>
+          <Tab eventKey={1} title="Build requests">
+            <BuildRequestsTable buildrequests={buildrequests}/>
+          </Tab>
+          <Tab eventKey={2} title="Workers">
+            {renderWorkers()}
+          </Tab>
+        </Tabs>
+      </div>
+
       <BuildsTable builds={builds} builders={null}/>
       {shownForceScheduler !== null
         ? <ForceBuildModal scheduler={shownForceScheduler} builderid={builderid}
