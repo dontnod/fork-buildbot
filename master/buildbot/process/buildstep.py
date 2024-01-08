@@ -40,6 +40,7 @@ from buildbot.process import logobserver
 from buildbot.process import properties
 from buildbot.process import remotecommand
 from buildbot.process import results
+from buildbot.process.locks import get_real_locks_from_accesses
 # (WithProperties used to be available in this module)
 from buildbot.process.properties import WithProperties
 from buildbot.process.results import ALL_RESULTS
@@ -501,13 +502,14 @@ class BuildStep(results.ResultComputingConfigMixin,
         self.stepid, self.number, self.name = yield self.master.data.updates.addStep(
             buildid=self.build.buildid,
             name=util.bytes2unicode(self.name))
-        yield self.master.data.updates.startStep(self.stepid)
 
     @defer.inlineCallbacks
     def startStep(self, remote):
         self.remote = remote
 
         yield self.addStep()
+        started_at = int(self.master.reactor.seconds())
+        yield self.master.data.updates.startStep(self.stepid, started_at=started_at)
 
         try:
             yield self._render_renderables()
@@ -524,12 +526,30 @@ class BuildStep(results.ResultComputingConfigMixin,
                 yield self._setup_locks()
 
                 # set up locks
-                yield self.acquireLocks()
+                if self._locks_to_acquire:
+                    yield self.acquireLocks()
 
-                if self.stopped:
-                    raise BuildStepCancelled
+                    if self.stopped:
+                        raise BuildStepCancelled
 
-                yield self.master.data.updates.set_step_locks_acquired_at(self.stepid)
+                    locks_acquired_at = int(self.master.reactor.seconds())
+                    yield defer.DeferredList(
+                        [
+                            self.master.data.updates.set_step_locks_acquired_at(
+                                self.stepid, locks_acquired_at=locks_acquired_at
+                            ),
+                            self.master.data.updates.add_build_locks_duration(
+                                self.build.buildid, duration_s=locks_acquired_at - started_at
+                            )
+                        ]
+                    )
+                else:
+                    yield self.master.data.updates.set_step_locks_acquired_at(
+                        self.stepid, locks_acquired_at=started_at
+                    )
+
+                    if self.stopped:
+                        raise BuildStepCancelled
 
                 yield self.addTestResultSets()
                 try:
@@ -600,25 +620,15 @@ class BuildStep(results.ResultComputingConfigMixin,
 
     @defer.inlineCallbacks
     def _setup_locks(self):
+        self._locks_to_acquire = yield get_real_locks_from_accesses(self.locks, self.build)
 
-        locks = yield self.build.render(self.locks)
-
-        # convert all locks into their real form
-        botmaster = self.build.builder.botmaster
-        locks = yield botmaster.getLockFromLockAccesses(locks, self.build.config_version)
-
-        # then narrow WorkerLocks down to the worker that this build is being
-        # run on
-        self._locks_to_acquire = [
-            (l.getLockForWorker(self.build.workerforbuilder.worker.workername), la)
-            for l, la in locks
-        ]
-
-        for l, _ in self._locks_to_acquire:
-            if l in self.build.locks:
-                log.msg(f"Hey, lock {l} is claimed by both a Step ({self}) and the"
-                        f" parent Build ({self.build})")
-                raise RuntimeError("lock claimed by both Step and Build")
+        if self.build._locks_to_acquire:
+            build_locks = [l for l, _ in self.build._locks_to_acquire]
+            for l, _ in self._locks_to_acquire:
+                if l in build_locks:
+                    log.err(f"{self}: lock {l} is claimed by both a Step ({self}) and the"
+                            f" parent Build ({self.build})")
+                    raise RuntimeError(f"lock claimed by both Step and Build ({l})")
 
     @defer.inlineCallbacks
     def _render_renderables(self):

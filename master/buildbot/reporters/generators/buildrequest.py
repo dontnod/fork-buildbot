@@ -54,7 +54,7 @@ class BuildRequestGenerator(BuildStatusGeneratorMixin):
         buildrequest = yield BuildRequest.fromBrdict(master, brdict)
         builder = yield master.botmaster.getBuilderById(brdict['builderid'])
 
-        Build.setupPropertiesKnownBeforeBuildStarts(props, [buildrequest], builder)
+        yield Build.setup_properties_known_before_build_starts(props, [buildrequest], builder)
         Build.setupBuildProperties(props, [buildrequest])
 
         bdict['properties'] = props.asDict()
@@ -88,7 +88,9 @@ class BuildRequestGenerator(BuildStatusGeneratorMixin):
             'type': buildmsg['type'],
             'results': build['results'],
             'builds': [build],
+            "buildset": build["buildset"],
             'users': list(users),
             'patches': patches,
-            'logs': []
+            'logs': [],
+            "extra_info": buildmsg["extra_info"],
         }

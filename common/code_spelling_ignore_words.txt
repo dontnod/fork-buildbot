@@ -209,6 +209,7 @@ buildroot
 build's
 buildset
 buildsetcomplete
+buildsetid
 buildset's
 buildsets
 buildsetsubmitted
@@ -1669,6 +1670,7 @@ workerdir
 workerenvironment
 workerforbuilder
 workerforbuilders
+workerid
 workerlock
 workermanager
 workername

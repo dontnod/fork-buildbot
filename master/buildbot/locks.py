@@ -45,9 +45,9 @@ class BaseLock:
 
         # Name of the lock
         self.lockName = name
-        # Current queue, tuples (waiter, LockAccess, deferred)
+        # Current queue, tuples (waiter_id, LockAccess, deferred)
         self.waiting = []
-        # Current owners, tuples (owner, LockAccess)
+        # Current owners, tuples (owner_id, LockAccess)
         self.owners = []
         # maximal number of counting owners
         self.maxCount = maxCount
@@ -77,14 +77,15 @@ class BaseLock:
 
     def _find_waiting(self, requester):
         for idx, waiter in enumerate(self.waiting):
-            if waiter[0] is requester:
+            if waiter[0] == id(requester):
                 return idx
         return None
 
     def isAvailable(self, requester, access):
         """ Return a boolean whether the lock is available for claiming """
         debuglog(f"{self} isAvailable({requester}, {access}): self.owners={repr(self.owners)}")
-        num_excl, num_counting = self._claimed_excl, self._claimed_counting
+        num_excl = self._claimed_excl
+        num_counting = self._claimed_counting
 
         if not access.count:
             return True
@@ -104,7 +105,7 @@ class BaseLock:
         return not num_excl and not num_counting and not ahead
 
     def _addOwner(self, owner, access):
-        self.owners.append((owner, access))
+        self.owners.append((id(owner), access))
         if access.mode == 'counting':
             self._claimed_counting += access.count
         else:
@@ -116,7 +117,7 @@ class BaseLock:
     def _removeOwner(self, owner, access):
         # returns True if owner removed, False if the lock has been already
         # released
-        entry = (owner, access)
+        entry = (id(owner), access)
         if entry not in self.owners:
             return False
 
@@ -143,7 +144,7 @@ class BaseLock:
         if not access.count:
             return
 
-        self.waiting = [w for w in self.waiting if w[0] is not owner]
+        self.waiting = [w for w in self.waiting if w[0] != id(owner)]
         self._addOwner(owner, access)
 
         debuglog(f" {self} is claimed '{access.mode}', {access.count} units")
@@ -175,7 +176,7 @@ class BaseLock:
         # Break out of the loop when the first waiting client should not be
         # awakened.
         num_excl, num_counting = self._claimed_excl, self._claimed_counting
-        for i, (w_owner, w_access, d) in enumerate(self.waiting):
+        for i, (w_owner_id, w_access, d) in enumerate(self.waiting):
             if w_access.mode == 'counting':
                 if num_excl > 0 or num_counting >= self.maxCount:
                     break
@@ -189,7 +190,7 @@ class BaseLock:
             # If the waiter has a deferred, wake it up and clear the deferred
             # from the wait queue entry to indicate that it has been woken.
             if d:
-                self.waiting[i] = (w_owner, w_access, None)
+                self.waiting[i] = (w_owner_id, w_access, None)
                 eventually(d.callback, self)
 
     def waitUntilMaybeAvailable(self, owner, access):
@@ -217,9 +218,9 @@ class BaseLock:
             _, _, old_d = self.waiting[w_index]
             assert old_d is None, "waitUntilMaybeAvailable() must not be called again before the " \
                                   "previous deferred fired"
-            self.waiting[w_index] = (owner, access, d)
+            self.waiting[w_index] = (id(owner), access, d)
         else:
-            self.waiting.append((owner, access, d))
+            self.waiting.append((id(owner), access, d))
         return d
 
     def stopWaitingUntilAvailable(self, owner, access, d):
@@ -245,7 +246,7 @@ class BaseLock:
             self._tryWakeUp()
 
     def isOwner(self, owner, access):
-        return (owner, access) in self.owners
+        return (id(owner), access) in self.owners
 
 
 class RealMasterLock(BaseLock, service.SharedService):

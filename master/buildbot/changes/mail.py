@@ -61,7 +61,8 @@ class MaildirSource(MaildirService, util.ComparableMixin):
         with self.moveToCurDir(filename) as f:
             chtuple = self.parse_file(f, self.prefix)
 
-        src, chdict = None, None
+        src = None
+        chdict = None
         if chtuple:
             src, chdict = chtuple
         if chdict:
@@ -116,7 +117,7 @@ class CVSMaildirSource(MaildirSource):
         else:
             when = mktime_tz(dateTuple)
 
-        theTime = datetime.datetime.utcfromtimestamp(float(when))
+        theTime = datetime.datetime.fromtimestamp(float(when), datetime.timezone.utc)
         rev = theTime.strftime('%Y-%m-%d %H:%M:%S')
 
         catRE = re.compile(r'^Category:\s*(\S.*)')

@@ -321,7 +321,10 @@ class _OperatorRenderer(RenderableOperatorsMixin, util.ComparableMixin):
     compare_attrs = ('fn',)
 
     def __init__(self, v1, v2, cstr, comparator):
-        self.v1, self.v2, self.comparator, self.cstr = v1, v2, comparator, cstr
+        self.v1 = v1
+        self.v2 = v2
+        self.comparator = comparator
+        self.cstr = cstr
 
     @defer.inlineCallbacks
     def getRenderingFor(self, props):
@@ -636,28 +639,28 @@ class Interpolate(RenderableOperatorsMixin, util.ComparableMixin):
             return f'Interpolate({repr(self.fmtstring)}, **{repr(self.kwargs)})'
         return f'Interpolate({repr(self.fmtstring)})'
 
-    @staticmethod
-    def _parse_prop(arg):
+    def _parse_substitution_prop(self, arg):
         try:
             prop, repl = arg.split(":", 1)
         except ValueError:
-            prop, repl = arg, None
+            prop = arg
+            repl = None
         if not Interpolate.identifier_re.match(prop):
             config.error(f"Property name must be alphanumeric for prop Interpolation '{arg}'")
-            prop = repl = None
+            prop = None
+            repl = None
 
         return _thePropertyDict, prop, repl
 
-    @staticmethod
-    def _parse_secret(arg):
+    def _parse_substitution_secret(self, arg):
         try:
             secret, repl = arg.split(":", 1)
         except ValueError:
-            secret, repl = arg, None
+            secret = arg
+            repl = None
         return _SecretIndexer(), secret, repl
 
-    @staticmethod
-    def _parse_src(arg):
+    def _parse_substitution_src(self, arg):
         # TODO: Handle changes
         try:
             codebase, attr, repl = arg.split(":", 2)
@@ -678,22 +681,32 @@ class Interpolate(RenderableOperatorsMixin, util.ComparableMixin):
             codebase = attr = repl = None
         return _SourceStampDict(codebase), attr, repl
 
-    def _parse_worker(self, arg):
+    def _parse_substitution_worker(self, arg):
         try:
             prop, repl = arg.split(":", 1)
         except ValueError:
-            prop, repl = arg, None
+            prop = arg
+            repl = None
         return _theWorkerPropertyDict, prop, repl
 
-    def _parse_kw(self, arg):
+    def _parse_substitution_kw(self, arg):
         try:
             kw, repl = arg.split(":", 1)
         except ValueError:
-            kw, repl = arg, None
+            kw = arg
+            repl = None
         if not Interpolate.identifier_re.match(kw):
             config.error(f"Keyword must be alphanumeric for kw Interpolation '{arg}'")
             kw = repl = None
         return _Lazy(self.kwargs), kw, repl
+
+    _substitutions = {
+        "prop": _parse_substitution_prop,
+        "secret": _parse_substitution_secret,
+        "src": _parse_substitution_src,
+        "worker": _parse_substitution_worker,
+        "kw": _parse_substitution_kw,
+    }
 
     def _parseSubstitution(self, fmt):
         try:
@@ -702,11 +715,11 @@ class Interpolate(RenderableOperatorsMixin, util.ComparableMixin):
             config.error(f"invalid Interpolate substitution without selector '{fmt}'")
             return None
 
-        fn = getattr(self, "_parse_" + key, None)
+        fn = self._substitutions.get(key, None)
         if not fn:
             config.error(f"invalid Interpolate selector '{key}'")
             return None
-        return fn(arg)
+        return fn(self, arg)
 
     @staticmethod
     def _splitBalancedParen(delim, arg):
