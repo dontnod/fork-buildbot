@@ -112,7 +112,7 @@ export class LogTextManager {
 
   // Current search string or null if no search is being performed at the moment
   searchString: string|null = null;
-  searchOptions: ChunkSearchOptions = {caseInsensitive: false, useRegex: false}
+  searchOptions: ChunkSearchOptions = {caseInsensitive: true, useRegex: false}
   // Valid only if searchString !== null. Indices are the same as this.chunks
   chunkSearchResults: ChunkSearchResults[] = [];
   // Valid only if searchString !== null
