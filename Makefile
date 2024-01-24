@@ -15,7 +15,7 @@ VENV_PY_VERSION ?= python3
 YARN := $(shell which yarnpkg || which yarn)
 
 WWW_PKGS := www/react-base www/react-console_view www/react-grid_view www/react-waterfall_view www/badges www/react-dne-grid_view
-WWW_EX_PKGS := www/nestedexample www/codeparameter
+WWW_EX_PKGS := www/nestedexample
 WWW_DEP_PKGS := www/plugin_support www/react-data-module www/react-ui
 ALL_PKGS := master worker pkg $(WWW_PKGS)
 
