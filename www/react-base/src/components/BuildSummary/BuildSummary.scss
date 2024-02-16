@@ -11,7 +11,9 @@
     border-top-right-radius: 3px;
   }
 
-  .bb-build-summary-details,
+  .bb-build-summary-details{
+    text-align: left;
+  }
   .bb-build-summary-time {
     float: right;
   }

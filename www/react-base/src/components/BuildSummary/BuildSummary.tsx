@@ -130,9 +130,7 @@ const BuildSummaryStepLine = observer(({build, step, logs, parentFullDisplay}: B
 
     return (
       <span className="bb-build-summary-time">
-          {stepDurationFormatWithLocks(step, now)}
-        &nbsp;
-        {step.state_string}
+        {stepDurationFormatWithLocks(step, now)}
         </span>
     );
   }
@@ -212,6 +210,11 @@ const BuildSummaryStepLine = observer(({build, step, logs, parentFullDisplay}: B
         {maybeRenderArrowExpander()}
         &nbsp;
         {step.name}
+        &nbsp;&nbsp;
+        {/* state_string disabled, as it is, it's really overloading the step line with no real interest IMO */}
+        {/*{step.state_string}*/}
+      </div>
+      <div className="bb-build-summary-time">
         {renderState()}
         {maybeRenderPendingBuildCount()}
       </div>
