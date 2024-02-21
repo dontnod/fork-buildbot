@@ -39,7 +39,17 @@
   position:relative;
 
   .bb-build-summary-step-label {
-    display: inline-block;
+    display: flex;
+    align-items: center;
+
+    > *  {
+      flex-shrink: 0;
+    }
+
+    .bb-build-summary-time {
+      flex-shrink: 1;
+      margin-left: auto;
+    }
   }
 
   &.list-group-item.bb-anchor-target {
