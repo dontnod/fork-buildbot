@@ -48,7 +48,6 @@ import {
   BadgeRound,
   ChangeUserAvatar,
   TopbarAction,
-  TopbarItem,
   dateFormat,
   durationFromNowFormat,
   useCurrentTime,
@@ -56,14 +55,12 @@ import {
   useTopbarItems,
   useTopbarActions,
 } from "buildbot-ui";
-import {RawData} from "../../components/RawData/RawData";
 import {PropertiesTable} from "../../components/PropertiesTable/PropertiesTable";
 import {ChangesTable} from "../../components/ChangesTable/ChangesTable";
 import {BuildSummary} from "../../components/BuildSummary/BuildSummary";
 import {Tab, Table, Tabs} from "react-bootstrap";
-import {TableHeading} from "../../components/TableHeading/TableHeading";
 import {buildTopbarItemsForBuilder} from "../../util/TopbarUtils";
-import moment from 'moment';
+import {BuildViewDebugTab} from "./BuildViewDebugTab";
 
 const buildTopbarActions = (build: Build | null, isRebuilding: boolean, isStopping: boolean,
                             doRebuild: () => void, doStop: () => void) => {
@@ -182,6 +179,8 @@ const BuildView = observer(() => {
   const project = projectsQuery.getNthOrNull(0);
 
   useEffect(() => {
+    // note that in case buildsQuery.array was updated, we have to recalculate build value
+    const build = findOrNull(buildsQuery.array, b => b.number === buildnumber);
     if (buildsQuery.resolved && build === null) {
       navigate(`/builders/${builderid}`);
     }
@@ -311,50 +310,13 @@ const BuildView = observer(() => {
     ));
   };
 
-  const renderDebugInfo = () => {
-    if (buildrequest === null || buildset === null) {
-      return <TableHeading>Buildrequest:</TableHeading>;
-    }
-
-    let buildTimings = null;
-    if (build !== null) {
-      const timingsObject: {[key: string] : string} = {
-        started_at: dateFormat(build.started_at),
-      };
-      if (build.complete_at !== null) {
-        timingsObject['complete_at'] = dateFormat(build.complete_at);
-
-        const buildDuration = moment.duration((build.complete_at - build.started_at) * 1000);
-        const buildDurationUTC = moment.utc(buildDuration.asMilliseconds());
-        timingsObject['duration'] = buildDurationUTC.format("HH:mm:ss");
-      }
-
-      buildTimings = (<>
-        <TableHeading>Build:</TableHeading>
-        <RawData data={timingsObject} />
-      </>);
-    }
-
-    return (
-      <>
-        <TableHeading>
-          <Link to={`/buildrequests/${buildrequest.id}`}>Buildrequest:</Link>
-        </TableHeading>
-        <RawData data={buildrequest.toObject()}/>
-        <TableHeading>Buildset:</TableHeading>
-        <RawData data={buildset.toObject()}/>
-        {buildTimings ? buildTimings : <></>}
-      </>
-    );
-  }
-
   return (
     <div className="container bb-build-view">
       <AlertNotification text={errorMsg}/>
       <nav>
         {renderPager(build)}
       </nav>
-      <Tabs>
+      <Tabs mountOnEnter={true}>
         <Tab eventKey="build-steps" title="Build steps">
           { build !== null
             ? <BuildSummary build={build} condensed={false} parentBuild={parentBuild}
@@ -388,7 +350,7 @@ const BuildView = observer(() => {
           }
         </Tab>
         <Tab eventKey="debug" title="Debug">
-          {renderDebugInfo()}
+          <BuildViewDebugTab build={build} buildrequest={buildrequest} buildset={buildset}/>
         </Tab>
       </Tabs>
     </div>

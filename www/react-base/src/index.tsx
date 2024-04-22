@@ -3,7 +3,7 @@ import './globals2';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import "./plugins/GlobalSetup";
+import {initializeGlobalSetup} from "./plugins/GlobalSetup";
 import "buildbot-plugin-support";
 import {App} from './App';
 import {
@@ -46,6 +46,7 @@ const doRender = (buildbotFrontendConfig: Config) => {
 
   const sidebarStore = new SidebarStore();
   const topbarStore = new TopbarStore();
+  initializeGlobalSetup(buildbotFrontendConfig);
   globalSettings.applyBuildbotConfig(buildbotFrontendConfig);
   globalSettings.load();
 

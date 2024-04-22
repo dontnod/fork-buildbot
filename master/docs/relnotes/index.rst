@@ -9,6 +9,47 @@ Release Notes
 .. towncrier release notes start
 
 
+Buildbot ``3.11.1`` ( ``2024-02-24`` )
+======================================
+
+Bug fixes
+---------
+
+- ``GitPoller`` now ensures the SSH Private Key it uses has a trailing newline.
+- Migrated off python-future which prevented installing Buildbot on distributions that do not provide
+  that package.
+- Fix sporadic navigation to builders page when new build is started (:issue:`7307`).
+
+
+Buildbot ``3.11.0`` ( ``2024-01-25`` )
+======================================
+
+Bug fixes
+---------
+
+- Declare Python 3.12 compatibility in generated packages of master and worker
+
+Features
+--------
+
+- Added a new WSGI dashboards plugin for React frontend.
+  It is backwards compatible with AngularJS one but may require changes in CSS styling of displayed web pages.
+- Implemented a report generator (``BuildSetCombinedStatusGenerator``) that can access complete
+  information about a buildset.
+- Low level database API now has ``get_sourcestamps_for_buildset`` to get source stamps for a
+  buildset. "/buildsets/:buildsetid/sourcestamps" endpoint has been added to access this from the
+  Data API.
+- Added buildset information to dictionaries returned by report generators.
+- Added a way to pass additional reporter-specific data to Reporters. Added ``extra_info_cb``
+  argument to ``MessageFormatter`` for this use case.
+- Implemented support for report generators in ``GerritStatusPush``.
+
+Deprecations and Removals
+-------------------------
+
+- The ``reviewCB``, ``reviewArg``, ``startCB``, ``startArg``, ``summaryCB``, ``summaryArg``,
+  ``builders`` , ``wantSteps``, ``wantLogs`` arguments of ``GerritStatusPush`` have been deprecated.
+
 Buildbot ``3.10.1`` ( ``2023-12-26`` )
 ======================================
 

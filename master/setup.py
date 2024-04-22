@@ -643,7 +643,7 @@ py_38 = sys.version_info[0] > 3 or (sys.version_info[0] == 3 and sys.version_inf
 if not py_38:
     raise RuntimeError("Buildbot master requires at least Python-3.8")
 
-twisted_ver = ">= 18.7.0, <=23.10.0"
+twisted_ver = ">= 18.7.0"
 
 bundle_version = version.split("-")[0]
 
@@ -698,11 +698,10 @@ setup_args['tests_require'] = test_deps
 setup_args['extras_require'] = {
     'test': [
         'setuptools_trial',
-        'isort',
+        'ruff',
         # spellcheck introduced in version 1.4.0
         'pylint<1.7.0',
         'pyenchant',
-        'flake8~=3.9.2',
     ]
     + test_deps,
     'bundle': [

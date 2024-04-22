@@ -22,6 +22,7 @@ from twisted.python.versions import Version
 from buildbot import config
 from buildbot.process import buildstep
 from buildbot.process import logobserver
+
 # for existing configurations that import WithProperties from here.  We like
 # to move this class around just to keep our readers guessing.
 from buildbot.process.properties import WithProperties
@@ -188,7 +189,7 @@ class ShellCommand(buildstep.ShellMixin, buildstep.BuildStep):
                 'decodeRC',
                 'stdioLogName',
                 'workdir',
-            ] + buildstep.BuildStep.parms
+            ] + buildstep.BuildStep._params_names
 
             invalid_args = []
             for arg in kwargs:

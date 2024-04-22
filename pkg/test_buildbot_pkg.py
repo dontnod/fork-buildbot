@@ -28,8 +28,7 @@ class BuildbotWWWPkg(unittest.TestCase):
     pkgPaths = ["www", "react-base"]
     epName = "base_react"
 
-    loadTestScript = dedent(
-        """
+    loadTestScript = dedent(r"""
         from importlib.metadata import entry_points
         import re
         apps = {}
@@ -51,8 +50,7 @@ class BuildbotWWWPkg(unittest.TestCase):
         assert(expected_file in apps["%(epName)s"].resource.listNames())
         assert(re.match(r'\d+\.\d+\.\d+', apps["%(epName)s"].version) is not None)
         assert(apps["%(epName)s"].description is not None)
-        """
-    )
+        """)
 
     @property
     def path(self):
@@ -78,16 +76,16 @@ class BuildbotWWWPkg(unittest.TestCase):
 
     def test_wheel(self):
         self.run_build("wheel")
-        check_call("pip install dist/*.whl", shell=True, cwd=self.path)
+        check_call("pip install build dist/*.whl", shell=True, cwd=self.path)
         self.check_correct_installation()
 
     def test_develop_via_pip(self):
-        check_call("pip install -e .", shell=True, cwd=self.path)
+        check_call("pip install build -e .", shell=True, cwd=self.path)
         self.check_correct_installation()
 
     def test_sdist(self):
         self.run_build("sdist")
-        check_call("pip install dist/*.tar.gz", shell=True, cwd=self.path)
+        check_call("pip install build dist/*.tar.gz", shell=True, cwd=self.path)
         self.check_correct_installation()
 
 

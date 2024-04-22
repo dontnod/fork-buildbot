@@ -13,8 +13,11 @@
 #
 # Copyright Buildbot Team Members
 
+from __future__ import annotations
+
 import warnings
 import weakref
+from typing import TYPE_CHECKING
 
 from twisted.application import service
 from twisted.internet import defer
@@ -33,6 +36,10 @@ from buildbot.util import bytes2unicode
 from buildbot.util import epoch2datetime
 from buildbot.util import service as util_service
 from buildbot.util.render_description import render_description
+
+if TYPE_CHECKING:
+    from buildbot.config.builder import BuilderConfig
+    from buildbot.config.master import MasterConfig
 
 
 def enforceChosenWorker(bldr, workerforbuilder, breq):
@@ -76,10 +83,14 @@ class Builder(util_service.ReconfigurableServiceMixin, service.MultiService):
 
         self.config = None
 
+        # Updated in reconfigServiceWithBuildbotConfig
+        self.project_name = None
+        self.project_id = None
+
         # Tracks config version for locks
         self.config_version = None
 
-    def _find_builder_config_by_name(self, new_config):
+    def _find_builder_config_by_name(self, new_config: MasterConfig) -> BuilderConfig | None:
         for builder_config in new_config.builders:
             if builder_config.name == self.name:
                 return builder_config
@@ -108,6 +119,9 @@ class Builder(util_service.ReconfigurableServiceMixin, service.MultiService):
 
         if self._has_updated_config_info(old_config, builder_config):
             projectid = yield self.find_project_id(builder_config.project)
+
+            self.project_name = builder_config.project
+            self.project_id = projectid
 
             yield self.master.data.updates.updateBuilderInfo(
                 builderid,
@@ -145,20 +159,16 @@ class Builder(util_service.ReconfigurableServiceMixin, service.MultiService):
         name = bytes2unicode(name)
         return self.master.data.updates.findBuilderId(name)
 
+    @defer.inlineCallbacks
     def getBuilderId(self):
         # since findBuilderId is idempotent, there's no reason to add
         # additional locking around this function.
         if self._builderid:
-            return defer.succeed(self._builderid)
+            return self._builderid
 
-        d = self.getBuilderIdForName(self.name)
-
-        @d.addCallback
-        def keep(builderid):
-            self._builderid = builderid
-            return builderid
-
-        return d
+        builderid = yield self.getBuilderIdForName(self.name)
+        self._builderid = builderid
+        return builderid
 
     @defer.inlineCallbacks
     def getOldestRequestTime(self):
@@ -416,6 +426,12 @@ class Builder(util_service.ReconfigurableServiceMixin, service.MultiService):
 
         props.setProperty("buildername", self.name, "Builder")
         props.setProperty("builderid", builderid, "Builder")
+
+        if self.project_name is not None:
+            props.setProperty('projectname', self.project_name, 'Builder')
+        if self.project_id is not None:
+            props.setProperty('projectid', self.project_id, 'Builder')
+
         if self.config.properties:
             for propertyname in self.config.properties:
                 props.setProperty(propertyname, self.config.properties[propertyname], "Builder")

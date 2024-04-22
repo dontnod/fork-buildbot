@@ -14,7 +14,6 @@
 # Copyright Buildbot Team Members
 
 from parameterized import parameterized
-
 from twisted.internet import defer
 from twisted.internet import error
 from twisted.trial import unittest
@@ -220,7 +219,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectListdir(dir='wkdir').files(['.git']).exit(0),
@@ -276,7 +275,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectListdir(dir='wkdir').files(['.git']).exit(0),
@@ -335,7 +334,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -343,7 +342,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_wrapper_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o700,
             )
             .download_string(read.append)
@@ -411,7 +410,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -419,7 +418,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_known_hosts_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectListdir(dir='wkdir').files(['.git']).exit(0),
@@ -480,7 +479,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -488,7 +487,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_known_hosts_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectListdir(dir='wkdir').files(['.git']).exit(0),
@@ -549,7 +548,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -557,7 +556,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_known_hosts_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -565,7 +564,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_wrapper_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o700,
             )
             .download_string(read.append)
@@ -631,7 +630,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -639,7 +638,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_known_hosts_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -647,7 +646,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_wrapper_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o700,
             ).exit(0),
             ExpectListdir(dir='wkdir').files(['.git']).exit(0),
@@ -709,7 +708,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir=workdir,
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -717,7 +716,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_known_hosts_path,
-                workdir=workdir,
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectListdir(dir=workdir).files(['.git']).exit(0),
@@ -811,7 +810,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectListdir(dir='wkdir').files(['.git']).exit(0),
@@ -868,7 +867,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectListdir(dir='wkdir').files(['.git']).exit(0),
@@ -924,7 +923,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -932,7 +931,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_wrapper_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o700,
             ).exit(0),
             ExpectListdir(dir='wkdir').files(['.git']).exit(0),
@@ -1977,7 +1976,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectListdir(dir='wkdir').files(['.git']).exit(0),
@@ -2710,7 +2709,7 @@ class TestGit(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='source',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectRmdir(dir='wkdir', log_environ=True, timeout=1200),
@@ -3975,7 +3974,7 @@ class TestGitPush(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectShell(
@@ -4010,7 +4009,7 @@ class TestGitPush(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectShell(
@@ -4046,7 +4045,7 @@ class TestGitPush(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -4054,7 +4053,7 @@ class TestGitPush(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_wrapper_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o700,
             ).exit(0),
             ExpectShell(
@@ -4097,7 +4096,7 @@ class TestGitPush(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -4105,7 +4104,7 @@ class TestGitPush(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_known_hosts_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectShell(
@@ -4147,7 +4146,7 @@ class TestGitPush(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -4155,7 +4154,7 @@ class TestGitPush(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_known_hosts_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectShell(
@@ -4195,7 +4194,7 @@ class TestGitPush(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_key_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -4203,7 +4202,7 @@ class TestGitPush(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_known_hosts_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o400,
             ).exit(0),
             ExpectDownloadFile(
@@ -4211,7 +4210,7 @@ class TestGitPush(
                 maxsize=None,
                 reader=ExpectRemoteRef(remotetransfer.StringFileReader),
                 workerdest=ssh_wrapper_path,
-                workdir='wkdir',
+                workdir=ssh_workdir,
                 mode=0o700,
             ).exit(0),
             ExpectShell(
