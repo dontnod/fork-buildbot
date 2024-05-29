@@ -237,7 +237,7 @@ export const BuildSummary = observer(({build, parentBuild, parentRelationship,
   const logsQuery = useDataApiQuery(() => stepsQuery.getRelated(step => step.getLogs()));
 
   const [detailLevel, setDetailLevel] =
-    useState<DetailLevel>(condensed ? DetailLevel.None : DetailLevel.Everything);
+    useState<DetailLevel>(condensed ? DetailLevel.OnlyNotSuccess : DetailLevel.Everything);
 
   const builder = builderQuery.getNthOrNull(0);
   const parentBuilder = builderBuilderQuery.getNthOrNull(0);
