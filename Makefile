@@ -25,7 +25,7 @@ YARN := $(shell which yarnpkg || which yarn)
 check_for_yarn:
 	@if [ "$(YARN)" = "" ]; then echo "yarnpkg or yarn is not installed" ; exit 1; fi
 
-WWW_PKGS := www/base www/console_view www/grid_view www/waterfall_view www/wsgi_dashboards www/badges
+WWW_PKGS := www/base www/console_view www/grid_view www/waterfall_view www/wsgi_dashboards www/badges www/react-dne-grid_view
 WWW_EX_PKGS := www/nestedexample
 WWW_DEP_PKGS := www/plugin_support www/data-module www/ui
 ALL_PKGS := master worker pkg $(WWW_PKGS)
