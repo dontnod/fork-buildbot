@@ -22,14 +22,32 @@ import {
   TopbarContext,
   TopbarStore
 } from "buildbot-ui";
-import {HashRouter} from "react-router-dom";
+import { HashRouter, createRoutesFromChildren, matchRoutes, useLocation, useNavigationType } from "react-router-dom";
 import {SidebarStore} from "./stores/SidebarStore";
 import { StoresContext } from './contexts/Stores';
 import {globalSettings} from "./plugins/GlobalSettings";
 import moment from "moment";
 import axios from "axios";
+import * as Sentry from "@sentry/react";
 
 const doRender = (buildbotFrontendConfig: Config) => {
+  if (buildbotFrontendConfig.sentryDSN) {
+    Sentry.init({
+      dsn: buildbotFrontendConfig.sentryDSN,
+      integrations: [
+        Sentry.reactRouterV6BrowserTracingIntegration({
+          useEffect: React.useEffect,
+          useLocation,
+          useNavigationType,
+          createRoutesFromChildren,
+          matchRoutes,
+        }),
+      ],
+      // Performance Monitoring
+      tracesSampleRate: 1.0, // Capture 100% of the transactions
+    });
+  }
+
   const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
   );

@@ -45,6 +45,7 @@ export type Config = {
   titleURL: string;
   buildbotURL: string;
   buildbotURLs?: string[];
+  sentryDSN?: string;
   multiMaster: boolean;
   ui_default_config: {[key: string]: any};
   versions: string[][];
