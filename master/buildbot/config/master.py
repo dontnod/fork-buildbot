@@ -732,6 +732,7 @@ class MasterConfig(util.ComparableMixin):
             'project_widgets',
             'graphql',
             'theme',
+            'sentryDSN',
         }
         unknown = set(list(www_cfg)) - allowed
 
