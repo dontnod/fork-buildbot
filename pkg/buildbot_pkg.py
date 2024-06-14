@@ -140,14 +140,13 @@ def getVersion(init_file):
         return version
 
     try:
-        p = Popen(['git', 'describe', '--tags', '--always'], stdout=PIPE, stderr=STDOUT, cwd=cwd)
-        out = p.communicate()[0]
-
-        if (not p.returncode) and out:
-            v = gitDescribeToPep440(str(out))
-            if v:
-                return v
-    except OSError:
+        from setuptools_git_versioning import get_version
+        root = os.path.dirname(os.path.dirname(os.path.abspath(init_file)))
+        version = get_version(config={
+            "enabled": True,
+        }, root=root)
+        return str(version)
+    except ImportError:
         pass
 
     try:
@@ -270,6 +269,8 @@ class EggInfoCommand(setuptools.command.egg_info.egg_info):
 def setup_www_plugin(**kw):
     package = kw['packages'][0]
     if 'version' not in kw:
+        kw.setdefault('setuptools_git_versioning', {"enabled": True})
+        kw.setdefault('setup_requires', []).append('setuptools-git-versioning>=2.0,<3')
         kw['version'] = getVersion(os.path.join(package, "__init__.py"))
 
     setup(
