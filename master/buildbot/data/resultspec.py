@@ -13,10 +13,17 @@
 #
 # Copyright Buildbot Team Members
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import sqlalchemy as sa
 from twisted.python import log
 
 from buildbot.data import base
+
+if TYPE_CHECKING:
+    from typing import Sequence
 
 
 class FieldBase:
@@ -71,10 +78,12 @@ class FieldBase:
         # only support string values, because currently there are no queries against lists in SQL
     }
 
-    def __init__(self, field, op, values):
+    def __init__(self, field: bytes, op: str, values: Sequence):
         self.field = field
         self.op = op
         self.values = values
+        # `str` is a Sequence as well...
+        assert not isinstance(values, str)
 
     def getOperator(self, sqlMode=False):
         v = self.values
