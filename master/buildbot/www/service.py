@@ -37,6 +37,7 @@ from buildbot.plugins.db import get_plugins
 from buildbot.util import bytes2unicode
 from buildbot.util import service
 from buildbot.util import unicode2bytes
+from buildbot.warnings import warn_deprecated
 from buildbot.www import auth
 from buildbot.www import avatar
 from buildbot.www import change_hook
@@ -272,23 +273,27 @@ class WWWService(service.ReconfigurableServiceMixin, service.AsyncMultiService):
 
     def refresh_base_plugin_name(self, new_config):
         if 'base_react' in new_config.www.get('plugins', {}):
+            warn_deprecated(
+                "4.0.0",
+                "base_react is no longer supported. Remove buildbot-www-react and install "
+                "buildbot-www package",
+            )
             self.base_plugin_name = 'base_react'
         else:
             self.base_plugin_name = 'base'
 
     def configPlugins(self, root, new_config):
         plugin_root = root
-        if self.base_plugin_name == 'base_react':
-            current_version = parse_version(twisted.__version__)
-            if current_version < parse_version("22.10.0"):
-                from twisted.web.resource import NoResource
+        current_version = parse_version(twisted.__version__)
+        if current_version < parse_version("22.10.0"):
+            from twisted.web.resource import NoResource
 
-                plugin_root = NoResource()
-            else:
-                from twisted.web.pages import notFound
+            plugin_root = NoResource()
+        else:
+            from twisted.web.pages import notFound
 
-                plugin_root = notFound()
-            root.putChild(b"plugins", plugin_root)
+            plugin_root = notFound()
+        root.putChild(b"plugins", plugin_root)
 
         known_plugins = set(new_config.www.get('plugins', {})) | set([self.base_plugin_name])
         for key, plugin in list(new_config.www.get('plugins', {}).items()):
