@@ -13,17 +13,24 @@
 #
 # Copyright Buildbot Team Members
 
+from __future__ import annotations
+
 import copy
 import enum
 import functools
 import re
 from collections import UserList
+from typing import TYPE_CHECKING
 
 from twisted.internet import defer
 
 from buildbot.data import exceptions
 from buildbot.util.twisted import async_to_deferred
 
+if TYPE_CHECKING:
+    from typing import Any
+
+    from buildbot.data.resultspec import ResultSpec
 
 class EndpointKind(enum.Enum):
     SINGLE = 1
@@ -117,7 +124,15 @@ class Endpoint:
         self.rtype = rtype
         self.master = master
 
-    def get(self, resultSpec, kwargs):
+    def get(self, resultSpec: ResultSpec, kwargs: dict[str, Any]):
+        raise NotImplementedError
+
+    async def stream(self, resultSpec: ResultSpec, kwargs: dict[str, Any]):
+        """
+        This is a prototype interface method for internal use.
+        There could be breaking changes to it.
+        Use at your own risks.
+        """
         raise NotImplementedError
 
     def control(self, action, args, kwargs):
