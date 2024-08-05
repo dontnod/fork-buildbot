@@ -34,6 +34,7 @@ from buildbot.config.errors import capture_config_errors
 from buildbot.config.errors import error
 from buildbot.interfaces import IRenderable
 from buildbot.process.project import Project
+from buildbot.process.results import SUCCESS
 from buildbot.revlinks import default_revlink_matcher
 from buildbot.util import ComparableMixin
 from buildbot.util import identifiers as util_identifiers
@@ -151,6 +152,7 @@ class MasterConfig(util.ComparableMixin):
         self.manhole = None
         self.protocols = {}
         self.buildbotNetUsageData = "basic"
+        self.successful_build_max_result = SUCCESS
 
         self.validation = {
             "branch": re.compile(r'^[\w.+/~-]*$'),
@@ -215,6 +217,7 @@ class MasterConfig(util.ComparableMixin):
         "secretsProviders",
         "select_next_worker",
         "services",
+        "successful_build_max_result",
         "title",
         "titleURL",
         "user_managers",
@@ -367,6 +370,8 @@ class MasterConfig(util.ComparableMixin):
                     "To set c['logCompressionMethod'] to 'lz4' "
                     "you must install the lz4 library ('pip install lz4')"
                 )
+
+        copy_int_param("successful_build_max_result")
 
         copy_int_param('logMaxSize')
         copy_int_param('logMaxTailSize')
