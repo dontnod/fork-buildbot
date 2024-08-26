@@ -28,7 +28,7 @@ import {
   useDataAccessor,
   useDataApiQuery
 } from "buildbot-data-js";
-import {TopbarAction, useTopbarItems, useTopbarActions, WorkerBadge} from "buildbot-ui";
+import {getBuildLinkDisplayProperties, TopbarAction, useTopbarItems, useTopbarActions, WorkerBadge} from "buildbot-ui";
 import {BuildsTable} from "../../components/BuildsTable/BuildsTable";
 import {BuildRequestsTable} from "../../components/BuildrequestsTable/BuildrequestsTable";
 import {useNavigate, useParams} from "react-router-dom";
@@ -104,7 +104,7 @@ export const BuilderView = observer(() => {
   const buildsQuery = useDataApiQuery(() =>
     buildersQuery.getRelated(builder => Build.getAll(accessor, {query: {
         builderid: builder.builderid,
-        property: ["owners", "workername", "branch", "revision"],
+        property: ["owners", "workername", "branch", "revision", ...getBuildLinkDisplayProperties()],
         limit: numBuilds,
         order: '-number'
       }
@@ -204,6 +204,7 @@ export const BuilderView = observer(() => {
     <ul className="list-inline bb-builder-workers-container">
     {
       !workers.isResolved() ? <LoadingSpan/> :
+      workers.array.length === 0 ? <span>None</span> :
       workers.array.map(worker => (
         <li><WorkerBadge key={worker.name} worker={worker} showWorkerName={true}/></li>
       ))
@@ -220,8 +221,10 @@ export const BuilderView = observer(() => {
       }
       <div>
         <Tabs defaultActiveKey={1}>
-          <Tab eventKey={1} title="Build requests">
+          <Tab eventKey={1} title="Builds">
+            <TableHeading>Builds requests:</TableHeading>
             <BuildRequestsTable buildrequests={buildrequests}/>
+            <BuildsTable builds={builds} builders={null}/>
           </Tab>
           <Tab eventKey={2} title="Workers">
             {renderWorkers()}
@@ -229,7 +232,6 @@ export const BuilderView = observer(() => {
         </Tabs>
       </div>
 
-      <BuildsTable builds={builds} builders={null}/>
       {shownForceScheduler !== null
         ? <ForceBuildModal scheduler={shownForceScheduler} builderid={builderid}
                            onClose={onForceBuildModalClose}/>

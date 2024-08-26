@@ -55,8 +55,11 @@ export default defineConfig({
         },
       },
     },
-    target: ['es2015'],
+    target: ['es2020'],
     outDir: outDir,
     emptyOutDir: true,
+  },
+  test: {
+    environment: "jsdom"
   },
 });

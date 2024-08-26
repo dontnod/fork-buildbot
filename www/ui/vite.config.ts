@@ -28,6 +28,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, 'src/main.ts'),
+      formats: ["es"],
       name: "buildbotUi",
       fileName: "buildbot-ui",
     },
@@ -55,9 +56,12 @@ export default defineConfig({
         },
       },
     },
-    target: ['es2015'],
+    target: ['es2020'],
     outDir: outDir,
     emptyOutDir: true,
+  },
+  test: {
+    environment: "jsdom"
   },
   define: {
     'process.env.NODE_ENV': '"production"',
