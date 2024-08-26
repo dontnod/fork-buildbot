@@ -42,6 +42,7 @@ import {
   results2class,
   results2text,
   SUCCESS,
+  FAILURE,
   useDataAccessor,
   useDataApiDynamicQuery,
   useDataApiQuery,
@@ -56,8 +57,9 @@ import {AnchorLink} from "../AnchorLink/AnchorLink";
 enum DetailLevel {
   None = 0,
   OnlyNotSuccess = 1,
-  Everything = 2,
-  Count = 3
+  OnlyFailures = 2,
+  Everything = 3,
+  Count = 4
 }
 
 const detailLevelToString = (level: DetailLevel) => {
@@ -66,6 +68,8 @@ const detailLevelToString = (level: DetailLevel) => {
       return "None";
     case DetailLevel.OnlyNotSuccess:
       return "Problems";
+    case DetailLevel.OnlyFailures:
+      return "Failures";
     case DetailLevel.Everything:
     default:
       return "All";
@@ -77,6 +81,8 @@ const isStepDisplayed = (step: Step, details: DetailLevel) => {
     return !step.hidden;
   } else if (details === DetailLevel.OnlyNotSuccess) {
     return (step.results == null) || (step.results !== SUCCESS);
+  } else if (details === DetailLevel.OnlyFailures) {
+    return step.results === FAILURE;
   } else if (details === DetailLevel.None) {
     return false;
   }
@@ -243,7 +249,7 @@ export const BuildSummary = observer(({build, parentBuild, parentRelationship,
   const logsQuery = useDataApiQuery(() => stepsQuery.getRelated(step => step.getLogs()));
 
   const [detailLevel, setDetailLevel] =
-    useState<DetailLevel>(condensed ? DetailLevel.None : DetailLevel.Everything);
+    useState<DetailLevel>(condensed ? DetailLevel.OnlyFailures : DetailLevel.Everything);
 
   const builder = builderQuery.getNthOrNull(0);
   const parentBuilder = builderBuilderQuery.getNthOrNull(0);
