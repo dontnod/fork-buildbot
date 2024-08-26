@@ -98,11 +98,11 @@ const shouldExpandLog = (log: Log, logsToExpand: string) => {
 const isSummaryLog = (log: Log) => log.name.toLowerCase() === "summary";
 const isStdioLog = (log: Log) => log.name.toLowerCase() === "stdio";
 
-// Returns the logs, sorted with the "Stdio" then "Summary" log first, if it exists in the step's list of logs
+// Returns the logs, sorted with the "Summary" log last, if it exists in the step's list of logs
+// As "Summary" log is extended by default, it can hide the other logs.
 const getStepLogsInDisplayOrder = (logs: DataCollection<Log>) => {
-  const summaryLogs = logs.array.filter(isSummaryLog);
-  const stdioLogs = logs.array.filter(isStdioLog);
-  return stdioLogs.concat(summaryLogs, logs.array.filter(log => !isSummaryLog(log) && !isStdioLog(log)));
+  const summaryLogs = logs.array.filter(log => isSummaryLog(log));
+  return logs.array.filter(log => !isSummaryLog(log)).concat(summaryLogs);
 };
 
 type BuildSummaryStepLineProps = {
