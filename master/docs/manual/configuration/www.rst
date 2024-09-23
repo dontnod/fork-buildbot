@@ -25,6 +25,11 @@ This server is configured with the ``www`` configuration key, which specifies a 
     Any versions less than this value will not be available.
     This can be used to ensure that no clients are depending on API versions that will soon be removed from Buildbot.
 
+``response_compress_level``
+    Control the compression level of the GZIP encoder used by the REST API for responses.
+    Can be any value between [-1, 9], default: 1 (fastest) (see: `python's zlib module documentation <https://docs.python.org/3/library/zlib.html#zlib.compress>`).
+    Compression can be disabled by setting this value to 0.
+
 ``plugins``
     This key gives a dictionary of additional UI plugins to load, along with configuration for those plugins.
     These plugins must be separately installed in the Python environment, e.g., ``pip install buildbot-waterfall-view``.

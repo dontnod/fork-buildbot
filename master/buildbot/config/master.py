@@ -719,6 +719,7 @@ class MasterConfig(util.ComparableMixin):
             'plugins',
             'port',
             'rest_minimum_version',
+            'response_compress_level',
             'ui_default_config',
             'versions',
             'ws_ping_interval',
@@ -751,6 +752,18 @@ class MasterConfig(util.ComparableMixin):
                 error(
                     'Invalid www["cookie_expiration_time"] configuration should '
                     'be a datetime.timedelta'
+                )
+
+        response_compress_level = www_cfg.get('response_compress_level')
+        if response_compress_level is not None:
+            if (
+                not isinstance(response_compress_level, int)
+                or response_compress_level < -1
+                or response_compress_level > 9
+            ):
+                error(
+                    'Invalid www["response_compress_level"] configuration should '
+                    'be an int in the range [-1, 9]'
                 )
 
         self.www.update(www_cfg)
