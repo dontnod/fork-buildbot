@@ -959,6 +959,30 @@ class MasterConfig_loaders(ConfigErrorsMixin, unittest.TestCase):
 
         self.assertConfigError(errors, 'Invalid www["cookie_expiration_time"]')
 
+    def test_load_www_response_compress_level(self):
+        with capture_config_errors() as errors:
+            self.cfg.load_www(self.filename, {'www': {"response_compress_level": 0}})
+
+        self.assertFalse(errors)
+
+    def test_load_www_response_compress_level_too_low(self):
+        with capture_config_errors() as errors:
+            self.cfg.load_www(self.filename, {'www': {"response_compress_level": -2}})
+
+        self.assertConfigError(errors, 'Invalid www["response_compress_level"]')
+
+    def test_load_www_response_compress_level_too_high(self):
+        with capture_config_errors() as errors:
+            self.cfg.load_www(self.filename, {'www': {"response_compress_level": 10}})
+
+        self.assertConfigError(errors, 'Invalid www["response_compress_level"]')
+
+    def test_load_www_response_compress_level_not_int(self):
+        with capture_config_errors() as errors:
+            self.cfg.load_www(self.filename, {'www': {"response_compress_level": '0'}})
+
+        self.assertConfigError(errors, 'Invalid www["response_compress_level"]')
+
     def test_load_www_unknown(self):
         with capture_config_errors() as errors:
             self.cfg.load_www(self.filename, {"www": {"foo": "bar"}})

@@ -28,6 +28,8 @@ from twisted.internet import defer
 from twisted.internet.error import ConnectionDone
 from twisted.python import log
 from twisted.web.error import Error
+from twisted.web.resource import EncodingResourceWrapper
+from twisted.web.server import GzipEncoderFactory
 
 from buildbot.data import exceptions
 from buildbot.data.base import EndpointKind
@@ -77,11 +79,17 @@ class RestRootResource(resource.Resource):
         super().__init__(master)
 
         min_vers = master.config.www.get('rest_minimum_version', 0)
+        response_compress_level = master.config.www.get('response_compress_level', 1)
+        encoder_factory = GzipEncoderFactory()
+        encoder_factory.compressLevel = response_compress_level
+
         latest = max(list(self.version_classes))
         for version, klass in self.version_classes.items():
             if version < min_vers:
                 continue
             child = klass(master)
+            if response_compress_level != 0:
+                child = EncodingResourceWrapper(child, [encoder_factory])
             child_path = f'v{version}'
             child_path = unicode2bytes(child_path)
             self.putChild(child_path, child)

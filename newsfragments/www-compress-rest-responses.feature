@@ -1,0 +1,2 @@
+Buildbot now compress REST API responses with GZIP (when the appropriate 'accept-encoding' is set).
+Default to compression level 1 (fastest). Compression level can be controlled with the 'response_compress_level' config key (see https://buildbot.readthedocs.io/en/latest/manual/configuration/www.html#web-server).
