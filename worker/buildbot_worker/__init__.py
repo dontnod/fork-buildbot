@@ -21,9 +21,6 @@
 import datetime
 import os
 import re
-from subprocess import PIPE
-from subprocess import STDOUT
-from subprocess import Popen
 
 
 def gitDescribeToPep440(version):
@@ -116,10 +113,14 @@ def getVersion(init_file):
 
     try:
         from setuptools_git_versioning import get_version
+
         root = os.path.dirname(os.path.dirname(os.path.abspath(init_file)))
-        version = get_version(config={
-            "enabled": True,
-        }, root=root)
+        version = get_version(
+            config={
+                "enabled": True,
+            },
+            root=root,
+        )
         return str(version)
     except ImportError:
         pass
