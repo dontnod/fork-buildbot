@@ -25,6 +25,7 @@ from buildbot.util import unicode2bytes
 
 if TYPE_CHECKING:
     from buildbot.db.connector import DBConnector
+    from buildbot.master import BuildMaster
 
 
 class DBConnectorComponent:
@@ -47,7 +48,7 @@ class DBConnectorComponent:
                 setattr(self, method, o.get_cached_method(self))
 
     @property
-    def master(self):
+    def master(self) -> BuildMaster | None:
         return self.db.master
 
     _isCheckLengthNecessary: bool | None = None
