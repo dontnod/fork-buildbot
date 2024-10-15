@@ -167,4 +167,9 @@ if os.getenv('NO_INSTALL_REQS'):
     setup_args['install_requires'] = None
     setup_args['extras_require'] = None
 
+setup_args['setuptools_git_versioning'] = {
+    "enabled": True,
+}
+setup_args.setdefault('setup_requires', []).append('setuptools-git-versioning>=2.0,<3')
+
 setup(**setup_args)
