@@ -31,7 +31,7 @@ class ZStdCompressor(CompressorInterface):
 
     @staticmethod
     def dumps(data: bytes) -> bytes:
-        return zstandard.compress(data, level=9)
+        return zstandard.compress(data, level=22)
 
     @staticmethod
     def read(data: bytes) -> bytes:
