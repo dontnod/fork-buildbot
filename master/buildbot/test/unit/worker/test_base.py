@@ -115,12 +115,16 @@ class WorkerInterfaceTests(interfaces.InterfaceTests):
 
 class RealWorkerItfc(TestReactorMixin, unittest.TestCase, WorkerInterfaceTests):
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.wrk = ConcreteWorker('wrk', 'pa')
 
     @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
+
+    @defer.inlineCallbacks
     def callAttached(self):
-        self.master = fakemaster.make_master(self, wantData=True)
+        self.master = yield fakemaster.make_master(self, wantData=True)
         yield self.master.workers.disownServiceParent()
         self.workers = bworkermanager.FakeWorkerManager()
         yield self.workers.setServiceParent(self.master)
@@ -131,10 +135,15 @@ class RealWorkerItfc(TestReactorMixin, unittest.TestCase, WorkerInterfaceTests):
 
 
 class FakeWorkerItfc(TestReactorMixin, unittest.TestCase, WorkerInterfaceTests):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self)
         self.wrk = worker.FakeWorker(self.master)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def callAttached(self):
         self.conn = fakeprotocol.FakeConnection(self.wrk)
@@ -144,13 +153,17 @@ class FakeWorkerItfc(TestReactorMixin, unittest.TestCase, WorkerInterfaceTests):
 class TestAbstractWorker(logging.LoggingMixin, TestReactorMixin, unittest.TestCase):
     @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.setUpLogging()
-        self.master = fakemaster.make_master(self, wantDb=True, wantData=True)
+        self.master = yield fakemaster.make_master(self, wantDb=True, wantData=True)
         self.botmaster = self.master.botmaster
         yield self.master.workers.disownServiceParent()
         self.workers = self.master.workers = bworkermanager.FakeWorkerManager()
         yield self.workers.setServiceParent(self.master)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def createWorker(self, name='bot', password='pass', attached=False, configured=True, **kwargs):
@@ -316,7 +329,7 @@ class TestAbstractWorker(logging.LoggingMixin, TestReactorMixin, unittest.TestCa
 
         # we create a fake builder, and associate to the master
         self.botmaster.builders['bot'] = [FakeBuilder()]
-        self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
             fakedb.Builder(id=1, name='builder'),
             fakedb.BuilderMaster(builderid=1, masterid=824),
         ])
@@ -481,7 +494,7 @@ class TestAbstractWorker(logging.LoggingMixin, TestReactorMixin, unittest.TestCa
     @defer.inlineCallbacks
     def test_startService_paused_true(self):
         """Test that paused state is restored on a buildbot restart"""
-        self.master.db.insert_test_data([fakedb.Worker(id=9292, name='bot', paused=1)])
+        yield self.master.db.insert_test_data([fakedb.Worker(id=9292, name='bot', paused=1)])
 
         worker = yield self.createWorker()
 
@@ -493,7 +506,7 @@ class TestAbstractWorker(logging.LoggingMixin, TestReactorMixin, unittest.TestCa
     @defer.inlineCallbacks
     def test_startService_graceful_true(self):
         """Test that graceful state is NOT restored on a buildbot restart"""
-        self.master.db.insert_test_data([fakedb.Worker(id=9292, name='bot', graceful=1)])
+        yield self.master.db.insert_test_data([fakedb.Worker(id=9292, name='bot', graceful=1)])
 
         worker = yield self.createWorker()
 
@@ -515,7 +528,7 @@ class TestAbstractWorker(logging.LoggingMixin, TestReactorMixin, unittest.TestCa
 
     @defer.inlineCallbacks
     def test_startService_getWorkerInfo_fromDb(self):
-        self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
             fakedb.Worker(
                 id=9292,
                 name='bot',
@@ -596,7 +609,7 @@ class TestAbstractWorker(logging.LoggingMixin, TestReactorMixin, unittest.TestCa
     @defer.inlineCallbacks
     def test_attached_workerInfoUpdates(self):
         # put in stale info:
-        self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
             fakedb.Worker(
                 name='bot',
                 info={
@@ -915,12 +928,16 @@ class TestAbstractWorker(logging.LoggingMixin, TestReactorMixin, unittest.TestCa
 class TestAbstractLatentWorker(TestReactorMixin, unittest.TestCase):
     @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantDb=True, wantData=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantDb=True, wantData=True)
         self.botmaster = self.master.botmaster
         yield self.master.workers.disownServiceParent()
         self.workers = self.master.workers = bworkermanager.FakeWorkerManager()
         yield self.workers.setServiceParent(self.master)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def do_test_reconfigService(self, old, new, existingRegistration=True):

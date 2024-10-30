@@ -267,7 +267,7 @@ class TestTelegramContact(ContactMixin, unittest.TestCase):
     def test_command_list_workers(self):
         workers = ['worker1', 'worker2']
         for worker in workers:
-            self.master.db.workers.db.insert_test_data([fakedb.Worker(name=worker)])
+            yield self.master.db.workers.db.insert_test_data([fakedb.Worker(name=worker)])
         yield self.do_test_command('list', args='all workers')
         self.assertEqual(len(self.sent), 1)
         for worker in workers:
@@ -277,7 +277,9 @@ class TestTelegramContact(ContactMixin, unittest.TestCase):
     def test_command_list_workers_online(self):
         self.setup_multi_builders()
         # Also set the connectedness:
-        self.master.db.insert_test_data([fakedb.ConnectedWorker(id=113, masterid=13, workerid=1)])
+        yield self.master.db.insert_test_data([
+            fakedb.ConnectedWorker(id=113, masterid=13, workerid=1)
+        ])
         yield self.do_test_command('list', args='all workers')
         self.assertEqual(len(self.sent), 1)
         self.assertNotIn('`linux1` ⚠️', self.sent[0][1])
@@ -285,13 +287,13 @@ class TestTelegramContact(ContactMixin, unittest.TestCase):
 
     @defer.inlineCallbacks
     def test_command_list_changes(self):
-        self.master.db.workers.db.insert_test_data([fakedb.Change()])
+        yield self.master.db.workers.db.insert_test_data([fakedb.Change()])
         yield self.do_test_command('list', args='2 changes')
         self.assertEqual(len(self.sent), 2)
 
     @defer.inlineCallbacks
     def test_command_list_changes_long(self):
-        self.master.db.workers.db.insert_test_data([fakedb.Change() for i in range(200)])
+        yield self.master.db.workers.db.insert_test_data([fakedb.Change() for i in range(200)])
         yield self.do_test_command('list', args='all changes')
         self.assertIn('reply_markup', self.sent[1][2])
 
@@ -550,11 +552,16 @@ class TestTelegramService(TestReactorMixin, unittest.TestCase):
 
     URL = 'https://api.telegram.org/bot12345:secret'
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.patch(reactor, 'callLater', self.reactor.callLater)
-        self.master = fakemaster.make_master(self, wantData=True, wantDb=True, wantMq=True)
+        self.master = yield fakemaster.make_master(self, wantData=True, wantDb=True, wantMq=True)
         self.http = None
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def setup_http_service(self):

@@ -37,28 +37,34 @@ class RestRootResource(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
     maxVersion = 3
 
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         _ = graphql  # used for import side effect
 
     @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
+
+    @defer.inlineCallbacks
     def test_render(self):
-        master = self.make_master(url='h:/a/b/')
+        master = yield self.make_master(url='h:/a/b/')
         rsrc = rest.RestRootResource(master)
 
         rv = yield self.render_resource(rsrc, b'/')
 
         self.assertIn(b'api_versions', rv)
 
+    @defer.inlineCallbacks
     def test_versions(self):
-        master = self.make_master(url='h:/a/b/')
+        master = yield self.make_master(url='h:/a/b/')
         rsrc = rest.RestRootResource(master)
         versions = [unicode2bytes(f'v{v}') for v in range(2, self.maxVersion + 1)]
         versions = [unicode2bytes(v) for v in versions]
         versions.append(b'latest')
         self.assertEqual(sorted(rsrc.listNames()), sorted(versions))
 
+    @defer.inlineCallbacks
     def test_versions_limited(self):
-        master = self.make_master(url='h:/a/b/')
+        master = yield self.make_master(url='h:/a/b/')
         master.config.www['rest_minimum_version'] = 2
         rsrc = rest.RestRootResource(master)
         versions = [unicode2bytes(f'v{v}') for v in range(2, self.maxVersion + 1)]
@@ -67,12 +73,17 @@ class RestRootResource(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
 
 
 class V2RootResource(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = self.make_master(url='http://server/path/')
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield self.make_master(url='http://server/path/')
         self.master.data._scanModule(endpoint)
         self.rsrc = rest.V2RootResource(self.master)
         self.rsrc.reconfigResource(self.master.config)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def assertSimpleError(self, message, responseCode):
         content = json.dumps({'error': message})
@@ -135,9 +146,10 @@ class V2RootResource(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
 
 
 class V2RootResource_CORS(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = self.make_master(url='h:/')
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield self.make_master(url='h:/')
         self.master.data._scanModule(endpoint)
         self.rsrc = rest.V2RootResource(self.master)
         self.master.config.www['allowed_origins'] = [b'h://good']
@@ -148,6 +160,10 @@ class V2RootResource_CORS(TestReactorMixin, www.WwwTestMixin, unittest.TestCase)
             return defer.succeed(None)
 
         self.rsrc.renderRest = renderRest
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def assertOk(self, expectHeaders=True, content=b'ok', origin=b'h://good'):
         hdrs = (
@@ -254,9 +270,10 @@ class V2RootResource_CORS(TestReactorMixin, www.WwwTestMixin, unittest.TestCase)
 
 
 class V2RootResource_REST(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = self.make_master(url='h:/')
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield self.make_master(url='h:/')
         self.master.config.www['debug'] = True
         self.master.data._scanModule(endpoint)
         self.rsrc = rest.V2RootResource(self.master)
@@ -271,6 +288,10 @@ class V2RootResource_REST(TestReactorMixin, www.WwwTestMixin, unittest.TestCase)
         endpoint.TestsEndpoint.rtype = mock.MagicMock()
         endpoint.Test.kind = EndpointKind.COLLECTION
         endpoint.Test.rtype = endpoint.Test
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def assertRestCollection(
         self, typeName, items, total=None, contentType=None, orderSignificant=False
@@ -746,9 +767,10 @@ class V2RootResource_REST(TestReactorMixin, www.WwwTestMixin, unittest.TestCase)
 
 
 class V2RootResource_JSONRPC2(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = self.make_master(url='h:/')
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield self.make_master(url='h:/')
 
         def allow(*args, **kw):
             return
@@ -758,6 +780,10 @@ class V2RootResource_JSONRPC2(TestReactorMixin, www.WwwTestMixin, unittest.TestC
         self.master.data._scanModule(endpoint)
         self.rsrc = rest.V2RootResource(self.master)
         self.rsrc.reconfigResource(self.master.config)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def assertJsonRpcError(self, message, responseCode=400, jsonrpccode=None):
         got = {}

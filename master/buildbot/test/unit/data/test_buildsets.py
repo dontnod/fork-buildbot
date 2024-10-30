@@ -37,9 +37,10 @@ class BuildsetEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = buildsets.BuildsetEndpoint
     resourceTypeClass = buildsets.Buildset
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Buildset(id=13, reason='because I said so'),
             fakedb.SourceStamp(id=92),
             fakedb.SourceStamp(id=93),
@@ -76,9 +77,10 @@ class BuildsetsEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = buildsets.BuildsetsEndpoint
     resourceTypeClass = buildsets.Buildset
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.SourceStamp(id=92),
             fakedb.Buildset(id=13, complete=True),
             fakedb.Buildset(id=14, complete=False),
@@ -122,11 +124,12 @@ class BuildsetsEndpoint(endpoint.EndpointMixin, unittest.TestCase):
 
 
 class Buildset(TestReactorMixin, util_interfaces.InterfaceTests, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
         self.rtype = buildsets.Buildset(self.master)
-        return self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
             fakedb.SourceStamp(
                 id=234,
                 branch='br',
@@ -138,7 +141,13 @@ class Buildset(TestReactorMixin, util_interfaces.InterfaceTests, unittest.TestCa
             ),
             fakedb.Builder(id=42, name='bldr1'),
             fakedb.Builder(id=43, name='bldr2'),
+            fakedb.Buildset(id=199, complete=False),
+            fakedb.BuildRequest(id=999, buildsetid=199, builderid=42),
         ])
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     SS234_DATA = {
         'branch': 'br',
@@ -189,10 +198,22 @@ class Buildset(TestReactorMixin, util_interfaces.InterfaceTests, unittest.TestCa
 
         (bsid, brids) = yield self.rtype.addBuildset(**kwargs)
         self.assertEqual((bsid, brids), expectedReturn)
-        # check the correct message was received
+
         self.master.mq.assertProductions(expectedMessages, orderMatters=False)
-        # and that the correct data was inserted into the db
-        self.master.db.buildsets.assertBuildset(bsid, expectedBuildset)
+
+        buildsets = yield self.master.db.buildsets.getBuildsets()
+        buildsets = [bs for bs in buildsets if bs.bsid != 199]
+        self.assertEqual(
+            [
+                {
+                    'external_idstring': bs.external_idstring,
+                    'reason': bs.reason,
+                    'rebuilt_buildid': bs.rebuilt_buildid,
+                }
+                for bs in buildsets
+            ],
+            [expectedBuildset],
+        )
 
     def _buildRequestMessageDict(self, brid, bsid, builderid):
         return {
@@ -309,7 +330,6 @@ class Buildset(TestReactorMixin, util_interfaces.InterfaceTests, unittest.TestCa
         ]
         expectedBuildset = {
             "reason": 'because',
-            "properties": {},
             "external_idstring": 'extid',
             "rebuilt_buildid": None,
         }
@@ -331,7 +351,6 @@ class Buildset(TestReactorMixin, util_interfaces.InterfaceTests, unittest.TestCa
         ]
         expectedBuildset = {
             "reason": 'because',
-            "properties": {},
             "external_idstring": 'extid',
             "rebuilt_buildid": None,
         }
@@ -383,35 +402,38 @@ class Buildset(TestReactorMixin, util_interfaces.InterfaceTests, unittest.TestCa
 
         self.reactor.advance(A_TIMESTAMP)
 
-        def mkbr(brid, bsid=72):
+        def mkbr(brid, bsid):
             return fakedb.BuildRequest(
                 id=brid,
                 buildsetid=bsid,
                 builderid=42,
-                complete=buildRequestCompletions.get(brid),
+                complete=buildRequestCompletions.get(brid, False),
                 results=buildRequestResults.get(brid, SUCCESS),
             )
 
         yield self.master.db.insert_test_data([
-            fakedb.Builder(id=42, name='bldr1'),
             fakedb.Buildset(
                 id=72,
                 submitted_at=EARLIER,
                 complete=buildsetComplete,
                 complete_at=A_TIMESTAMP if buildsetComplete else None,
             ),
-            mkbr(42),
-            mkbr(43),
-            mkbr(44),
+            mkbr(42, 72),
+            mkbr(43, 72),
+            mkbr(44, 72),
             fakedb.BuildsetSourceStamp(buildsetid=72, sourcestampid=234),
             fakedb.Buildset(id=73, complete=False),
-            mkbr(45, bsid=73),
+            mkbr(45, 73),
             fakedb.BuildsetSourceStamp(buildsetid=73, sourcestampid=234),
         ])
 
         yield self.rtype.maybeBuildsetComplete(72)
 
-        self.master.db.buildsets.assertBuildsetCompletion(72, expectComplete)
+        buildset_ids = [
+            bs.bsid for bs in (yield self.master.db.buildsets.getBuildsets(complete=expectComplete))
+        ]
+        self.assertIn(72, buildset_ids)
+
         if expectMessage:
             self.assertEqual(
                 self.master.mq.productions,

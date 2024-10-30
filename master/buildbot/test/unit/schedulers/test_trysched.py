@@ -33,12 +33,15 @@ class TryBase(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase):
     OBJECTID = 26
     SCHEDULERID = 6
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.setUpScheduler()
+        self.setup_test_reactor(auto_tear_down=False)
+        yield self.setUpScheduler()
 
+    @defer.inlineCallbacks
     def tearDown(self):
         self.tearDownScheduler()
+        yield self.tear_down_test_reactor()
 
     def makeScheduler(self, **kwargs):
         return self.attachScheduler(
@@ -59,7 +62,7 @@ class TryBase(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase):
 
     @defer.inlineCallbacks
     def test_enabled_callback(self):
-        sched = self.makeScheduler(
+        sched = yield self.makeScheduler(
             name='tsched', builderNames=['a'], port='tcp:9999', userpass=[('fred', 'derf')]
         )
         expectedValue = not sched.enabled
@@ -71,7 +74,7 @@ class TryBase(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase):
 
     @defer.inlineCallbacks
     def test_disabled_activate(self):
-        sched = self.makeScheduler(
+        sched = yield self.makeScheduler(
             name='tsched', builderNames=['a'], port='tcp:9999', userpass=[('fred', 'derf')]
         )
         yield sched._enabledCallback(None, {'enabled': not sched.enabled})
@@ -81,7 +84,7 @@ class TryBase(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase):
 
     @defer.inlineCallbacks
     def test_disabled_deactivate(self):
-        sched = self.makeScheduler(
+        sched = yield self.makeScheduler(
             name='tsched', builderNames=['a'], port='tcp:9999', userpass=[('fred', 'derf')]
         )
         yield sched._enabledCallback(None, {'enabled': not sched.enabled})
@@ -127,18 +130,22 @@ class Try_Jobdir(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase):
     OBJECTID = 23
     SCHEDULERID = 3
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.setUpScheduler()
+        self.setup_test_reactor(auto_tear_down=False)
+        yield self.setUpScheduler()
         self.jobdir = None
 
+    @defer.inlineCallbacks
     def tearDown(self):
         self.tearDownScheduler()
         if self.jobdir:
             shutil.rmtree(self.jobdir)
+        yield self.tear_down_test_reactor()
 
     # tests
 
+    @defer.inlineCallbacks
     def setup_test_startService(self, jobdir, exp_jobdir):
         # set up jobdir
         self.jobdir = os.path.abspath('jobdir')
@@ -148,7 +155,7 @@ class Try_Jobdir(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase):
 
         # build scheduler
         kwargs = {"name": 'tsched', "builderNames": ['a'], "jobdir": self.jobdir}
-        sched = self.attachScheduler(
+        sched = yield self.attachScheduler(
             trysched.Try_Jobdir(**kwargs),
             self.OBJECTID,
             self.SCHEDULERID,
@@ -174,22 +181,25 @@ class Try_Jobdir(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase):
         self.assertEqual(1, self.sched.watcher.startService.call_count)
         self.assertEqual(1, self.sched.watcher.stopService.call_count)
 
+    @defer.inlineCallbacks
     def test_startService_reldir(self):
-        self.setup_test_startService('jobdir', os.path.abspath('basedir/jobdir'))
-        return self.do_test_startService()
+        yield self.setup_test_startService('jobdir', os.path.abspath('basedir/jobdir'))
+        yield self.do_test_startService()
 
+    @defer.inlineCallbacks
     def test_startService_reldir_subdir(self):
-        self.setup_test_startService('jobdir', os.path.abspath('basedir/jobdir/cur'))
-        return self.do_test_startService()
+        yield self.setup_test_startService('jobdir', os.path.abspath('basedir/jobdir/cur'))
+        yield self.do_test_startService()
 
+    @defer.inlineCallbacks
     def test_startService_absdir(self):
-        self.setup_test_startService(os.path.abspath('jobdir'), os.path.abspath('jobdir'))
-        return self.do_test_startService()
+        yield self.setup_test_startService(os.path.abspath('jobdir'), os.path.abspath('jobdir'))
+        yield self.do_test_startService()
 
     @defer.inlineCallbacks
     def do_test_startService_but_not_active(self, jobdir, exp_jobdir):
         """Same as do_test_startService, but the master wont activate this service"""
-        self.setup_test_startService('jobdir', os.path.abspath('basedir/jobdir'))
+        yield self.setup_test_startService('jobdir', os.path.abspath('basedir/jobdir'))
 
         self.setSchedulerToMaster(self.OTHER_MASTER_ID)
 
@@ -707,8 +717,9 @@ class Try_Jobdir(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase):
 
     # handleJobFile
 
+    @defer.inlineCallbacks
     def call_handleJobFile(self, parseJob):
-        sched = self.attachScheduler(
+        sched = yield self.attachScheduler(
             trysched.Try_Jobdir(name='tsched', builderNames=['buildera', 'builderb'], jobdir='foo'),
             self.OBJECTID,
             self.SCHEDULERID,
@@ -722,7 +733,7 @@ class Try_Jobdir(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase):
             return parseJob(f)
 
         sched.parseJob = parseJob_
-        return defer.maybeDeferred(sched.handleJobFile, 'fakefile', fakefile)
+        yield sched.handleJobFile('fakefile', fakefile)
 
     def makeSampleParsedJob(self, **overrides):
         pj = {
@@ -865,12 +876,15 @@ class Try_Userpass_Perspective(scheduler.SchedulerMixin, TestReactorMixin, unitt
     OBJECTID = 26
     SCHEDULERID = 6
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.setUpScheduler()
+        self.setup_test_reactor(auto_tear_down=False)
+        yield self.setUpScheduler()
 
+    @defer.inlineCallbacks
     def tearDown(self):
         self.tearDownScheduler()
+        yield self.tear_down_test_reactor()
 
     def makeScheduler(self, **kwargs):
         return self.attachScheduler(
@@ -883,7 +897,7 @@ class Try_Userpass_Perspective(scheduler.SchedulerMixin, TestReactorMixin, unitt
 
     @defer.inlineCallbacks
     def call_perspective_try(self, *args, **kwargs):
-        sched = self.makeScheduler(
+        sched = yield self.makeScheduler(
             name='tsched',
             builderNames=['a', 'b'],
             port='xxx',
@@ -1028,7 +1042,7 @@ class Try_Userpass_Perspective(scheduler.SchedulerMixin, TestReactorMixin, unitt
 
     @defer.inlineCallbacks
     def test_getAvailableBuilderNames(self):
-        sched = self.makeScheduler(
+        sched = yield self.makeScheduler(
             name='tsched', builderNames=['a', 'b'], port='xxx', userpass=[('a', 'b')]
         )
         persp = trysched.Try_Userpass_Perspective(sched, 'a')
@@ -1041,22 +1055,26 @@ class Try_Userpass(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase
     OBJECTID = 25
     SCHEDULERID = 5
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.setUpScheduler()
+        self.setup_test_reactor(auto_tear_down=False)
+        yield self.setUpScheduler()
 
+    @defer.inlineCallbacks
     def tearDown(self):
         self.tearDownScheduler()
+        yield self.tear_down_test_reactor()
 
+    @defer.inlineCallbacks
     def makeScheduler(self, **kwargs):
-        sched = self.attachScheduler(
+        sched = yield self.attachScheduler(
             trysched.Try_Userpass(**kwargs), self.OBJECTID, self.SCHEDULERID
         )
         return sched
 
     @defer.inlineCallbacks
     def test_service(self):
-        sched = self.makeScheduler(
+        sched = yield self.makeScheduler(
             name='tsched', builderNames=['a'], port='tcp:9999', userpass=[('fred', 'derf')]
         )
         # patch out the pbmanager's 'register' command both to be sure
@@ -1081,7 +1099,7 @@ class Try_Userpass(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase
 
     @defer.inlineCallbacks
     def test_service_but_not_active(self):
-        sched = self.makeScheduler(
+        sched = yield self.makeScheduler(
             name='tsched', builderNames=['a'], port='tcp:9999', userpass=[('fred', 'derf')]
         )
 

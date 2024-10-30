@@ -35,13 +35,13 @@ class TestGitHubStatusPush(
 ):
     @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
 
         self.setup_reporter_test()
         # project must be in the form <owner>/<project>
         self.reporter_test_project = 'buildbot/buildbot'
 
-        self.master = fakemaster.make_master(self, wantData=True, wantDb=True, wantMq=True)
+        self.master = yield fakemaster.make_master(self, wantData=True, wantDb=True, wantMq=True)
 
         yield self.master.startService()
         self._http = yield fakehttpclientservice.HTTPClientService.getService(
@@ -58,8 +58,10 @@ class TestGitHubStatusPush(
     def createService(self):
         return GitHubStatusPush(Interpolate('XXYYZZ'))
 
+    @defer.inlineCallbacks
     def tearDown(self):
-        return self.master.stopService()
+        yield self.master.stopService()
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def test_basic(self):
@@ -121,14 +123,14 @@ class TestGitHubStatusPush(
     def test_source_stamp_no_props_nightly_scheduler(self):
         # no status updates are expected
 
-        self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
             fakedb.Master(id=92),
             fakedb.Worker(id=13, name='wrk'),
             fakedb.Builder(id=79, name='Builder0'),
             fakedb.Buildset(id=98, results=SUCCESS, reason="test_reason1"),
             fakedb.BuildsetSourceStamp(buildsetid=98, sourcestampid=234),
             fakedb.SourceStamp(
-                id=234, project=None, branch=None, revision=None, repository=None, codebase=None
+                id=234, project='', branch=None, revision=None, repository='repo', codebase='cb'
             ),
             fakedb.BuildRequest(id=11, buildsetid=98, builderid=79),
             fakedb.Build(
@@ -239,7 +241,7 @@ class TestGitHubStatusPush(
 
         # note that the first sourcestamp only has revision, second only branch and only the third
         # has both
-        self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
             fakedb.Master(id=92),
             fakedb.Worker(id=13, name='wrk'),
             fakedb.Builder(id=79, name='Builder0'),
@@ -300,14 +302,14 @@ class TestGitHubStatusPush(
 class TestGitHubStatusPushURL(TestReactorMixin, unittest.TestCase, ReporterTestMixin):
     @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
 
         self.setup_reporter_test()
         # project must be in the form <owner>/<project>
         self.reporter_test_project = 'buildbot'
         self.reporter_test_repo = 'https://github.com/buildbot1/buildbot1.git'
 
-        self.master = fakemaster.make_master(self, wantData=True, wantDb=True, wantMq=True)
+        self.master = yield fakemaster.make_master(self, wantData=True, wantDb=True, wantMq=True)
 
         yield self.master.startService()
         self._http = yield fakehttpclientservice.HTTPClientService.getService(
@@ -324,8 +326,10 @@ class TestGitHubStatusPushURL(TestReactorMixin, unittest.TestCase, ReporterTestM
     def createService(self):
         return GitHubStatusPush('XXYYZZ')
 
+    @defer.inlineCallbacks
     def tearDown(self):
-        return self.master.stopService()
+        yield self.master.stopService()
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def test_ssh(self):
@@ -518,7 +522,7 @@ class TestGitHubCommentPush(TestGitHubStatusPush):
 
         # note that the first sourcestamp only has revision, second only branch and only the third
         # has both
-        self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
             fakedb.Master(id=92),
             fakedb.Worker(id=13, name='wrk'),
             fakedb.Builder(id=79, name='Builder0'),

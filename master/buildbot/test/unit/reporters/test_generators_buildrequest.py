@@ -34,14 +34,19 @@ class TestBuildRequestGenerator(
 ):
     all_messages = ('failing', 'passing', 'warnings', 'exception', 'cancelled')
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.setup_reporter_test()
-        self.master = fakemaster.make_master(self, wantData=True, wantDb=True, wantMq=True)
+        self.master = yield fakemaster.make_master(self, wantData=True, wantDb=True, wantMq=True)
 
         builder = Mock(spec=Builder)
         builder.master = self.master
         self.master.botmaster.getBuilderById = Mock(return_value=builder)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @parameterized.expand([
         ('tags', 'tag'),

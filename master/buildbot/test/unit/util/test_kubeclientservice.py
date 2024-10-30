@@ -106,8 +106,8 @@ class KubeClientServiceTestKubeHardcodedConfig(
 ):
     @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self)
         self._http = yield fakehttpclientservice.HTTPClientService.getService(
             self.master, self, "http://localhost:8001"
         )
@@ -116,6 +116,7 @@ class KubeClientServiceTestKubeHardcodedConfig(
     @defer.inlineCallbacks
     def tearDown(self):
         yield self.master.stopService()
+        yield self.tear_down_test_reactor()
 
     def test_basic(self):
         self.config = kubeclientservice.KubeHardcodedConfig(

@@ -111,8 +111,8 @@ class TestWorkerConnection(unittest.TestCase, TestReactorMixin):
 
     @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantMq=True, wantData=True, wantDb=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantMq=True, wantData=True, wantDb=True)
         # set the worker port to a loopback address with unspecified
         # port
         self.pbmanager = self.master.pbmanager = PBManager()
@@ -154,6 +154,7 @@ class TestWorkerConnection(unittest.TestCase, TestReactorMixin):
         # if the worker is still attached, wait for it to detach, too
         if self.buildworker:
             yield self.buildworker.waitForCompleteShutdown()
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def addMasterSideWorker(

@@ -122,9 +122,10 @@ class WorkerEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = workers.WorkerEndpoint
     resourceTypeClass = workers.Worker
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        return self.db.insert_test_data(testData)
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data(testData)
 
     def tearDown(self):
         self.tearDownEndpoint()
@@ -208,9 +209,10 @@ class WorkersEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = workers.WorkersEndpoint
     resourceTypeClass = workers.Worker
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        return self.db.insert_test_data(testData)
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data(testData)
 
     def tearDown(self):
         self.tearDownEndpoint()
@@ -290,14 +292,19 @@ class WorkersEndpoint(endpoint.EndpointMixin, unittest.TestCase):
 
 
 class Worker(TestReactorMixin, interfaces.InterfaceTests, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
         self.rtype = workers.Worker(self.master)
-        return self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
             fakedb.Master(id=13),
             fakedb.Master(id=14),
         ])
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def test_signature_findWorkerId(self):
         @self.assertArgSpecMatches(

@@ -15,7 +15,6 @@
 
 
 from twisted.internet import defer
-from twisted.trial import unittest
 
 from buildbot.db import schedulers
 from buildbot.test import fakedb
@@ -431,16 +430,6 @@ class Tests(interfaces.InterfaceTests):
 class RealTests(Tests):
     # tests that only "real" implementations will pass
     pass
-
-
-class TestFakeDB(unittest.TestCase, connector_component.FakeConnectorComponentMixin, Tests):
-    @defer.inlineCallbacks
-    def setUp(self):
-        yield self.setUpConnectorComponent()
-
-    def addClassifications(self, schedulerid, *classifications):
-        self.db.schedulers.fakeClassifications(schedulerid, dict(classifications))
-        return defer.succeed(None)
 
 
 class TestRealDB(db.TestCase, connector_component.ConnectorComponentMixin, RealTests):

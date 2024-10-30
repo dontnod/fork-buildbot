@@ -48,12 +48,14 @@ class TestGit(
     stepClass = git.Git
 
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.sourceName = self.stepClass.__name__
         return self.setUpSourceStep()
 
+    @defer.inlineCallbacks
     def tearDown(self):
-        return self.tearDownSourceStep()
+        yield self.tearDownSourceStep()
+        yield self.tear_down_test_reactor()
 
     def test_mode_full_filters_2_26(self):
         self.setup_step(
@@ -748,7 +750,7 @@ class TestGit(
                 repourl='http://github.com/buildbot/buildbot.git', mode='full', method='clean'
             )
         )
-        self.change_worker_system('win32')
+        self.change_worker_system('nt')
         self.expect_commands(
             ExpectShell(workdir='wkdir', command=['git', '--version'])
             .stdout('git version 1.7.5')
@@ -787,7 +789,7 @@ class TestGit(
                 sshPrivateKey='sshkey',
             )
         )
-        self.change_worker_system('win32')
+        self.change_worker_system('nt')
 
         ssh_workdir = '\\wrk\\.bldr.wkdir.buildbot'
         ssh_key_path = '\\wrk\\.bldr.wkdir.buildbot\\ssh-key'
@@ -843,7 +845,7 @@ class TestGit(
                 sshPrivateKey='sshkey',
             )
         )
-        self.change_worker_system('win32')
+        self.change_worker_system('nt')
 
         ssh_workdir = '\\wrk\\.bldr.wkdir.buildbot'
         ssh_key_path = '\\wrk\\.bldr.wkdir.buildbot\\ssh-key'
@@ -898,7 +900,7 @@ class TestGit(
                 sshPrivateKey='sshkey',
             )
         )
-        self.change_worker_system('win32')
+        self.change_worker_system('nt')
 
         ssh_workdir = '\\wrk\\.bldr.wkdir.buildbot'
         ssh_key_path = '\\wrk\\.bldr.wkdir.buildbot\\ssh-key'
@@ -4185,7 +4187,7 @@ class TestGitPush(
     stepClass = git.GitPush
 
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         return self.setup_test_build_step()
 
     def tearDown(self):
@@ -4668,7 +4670,7 @@ class TestGitTag(TestBuildStepMixin, config.ConfigErrorsMixin, TestReactorMixin,
     stepClass = git.GitTag
 
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         return self.setup_test_build_step()
 
     def tearDown(self):
@@ -4764,14 +4766,16 @@ class TestGitCommit(
     stepClass = git.GitCommit
 
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.message_list = ['my commit', '42']
         self.path_list = ['file1.txt', 'file2.txt']
 
         return self.setup_test_build_step()
 
+    @defer.inlineCallbacks
     def tearDown(self):
-        return self.tear_down_test_build_step()
+        yield self.tear_down_test_build_step()
+        yield self.tear_down_test_reactor()
 
     def test_add_fail(self):
         self.setup_step(

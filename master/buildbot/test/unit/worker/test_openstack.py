@@ -43,7 +43,7 @@ class TestOpenStackWorker(TestReactorMixin, unittest.TestCase):
     bs_image_args = {"flavor": 1, "image": '28a65eb4-f354-4420-97dc-253b826547f7', **os_auth}
 
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.patch(openstack, "client", novaclient)
         self.patch(openstack, "loading", novaclient)
         self.patch(openstack, "session", novaclient)
@@ -56,9 +56,13 @@ class TestOpenStackWorker(TestReactorMixin, unittest.TestCase):
         self.masterhash = hashlib.sha1(b'fake:/master').hexdigest()[:6]
 
     @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
+
+    @defer.inlineCallbacks
     def setupWorker(self, *args, **kwargs):
         worker = openstack.OpenStackLatentWorker(*args, **kwargs)
-        master = fakemaster.make_master(self, wantData=True)
+        master = yield fakemaster.make_master(self, wantData=True)
         fakemaster.master = master
         worker.setServiceParent(master)
         yield master.startService()

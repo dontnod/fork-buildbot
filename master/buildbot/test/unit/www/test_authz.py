@@ -34,8 +34,9 @@ from buildbot.www.authz.roles import RolesFromOwner
 
 
 class Authz(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         authzcfg = authz.Authz(
             # simple matcher with '*' glob character
             stringsMatcher=authz.fnmatchStrMatcher,
@@ -84,9 +85,9 @@ class Authz(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
             },
             "eightuser": {"email": "user@eight.com", "groups": ["buildbot-eight-deverlopers"]},
         }
-        self.master = self.make_master(url='h:/a/b/', authz=authzcfg)
+        self.master = yield self.make_master(url='h:/a/b/', authz=authzcfg)
         self.authz = self.master.authz
-        self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
             fakedb.Builder(id=77, name="mybuilder"),
             fakedb.Master(id=88),
             fakedb.Worker(id=13, name='wrk'),
@@ -105,6 +106,10 @@ class Authz(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
                 id=15, builderid=77, masterid=88, workerid=13, buildrequestid=82, number=5
             ),
         ])
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def setAllowRules(self, allow_rules):
         # we should add links to authz and master instances in each new rule

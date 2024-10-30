@@ -101,13 +101,15 @@ class ClusteredBuildbotService(unittest.TestCase, TestReactorMixin):
     class DummyService(service.ClusteredBuildbotService):
         pass
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantDb=True, wantData=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantDb=True, wantData=True)
         self.svc = self.makeService()
 
+    @defer.inlineCallbacks
     def tearDown(self):
-        pass
+        yield self.tear_down_test_reactor()
 
     def makeService(self, attach_to_master=True, name=SVC_NAME, serviceid=SVC_ID):
         svc = self.DummyService(name=name)

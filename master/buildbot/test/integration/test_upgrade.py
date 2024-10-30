@@ -90,7 +90,7 @@ class UpgradeTestMixin(db.RealDatabaseMixin, TestReactorMixin):
                 os.makedirs("basedir")
             self.basedir = os.path.abspath("basedir")
 
-        self.master = master = fakemaster.make_master(self)
+        self.master = master = yield fakemaster.make_master(self)
         master.config.db['db_url'] = self.db_url
         self.db = connector.DBConnector(self.basedir)
         yield self.db.setServiceParent(master)
@@ -111,11 +111,13 @@ class UpgradeTestMixin(db.RealDatabaseMixin, TestReactorMixin):
     # save subclasses the trouble of calling our setUp and tearDown methods
 
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         return self.setUpUpgradeTest()
 
+    @defer.inlineCallbacks
     def tearDown(self):
-        return self.tearDownUpgradeTest()
+        yield self.tearDownUpgradeTest()
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def assertModelMatches(self):

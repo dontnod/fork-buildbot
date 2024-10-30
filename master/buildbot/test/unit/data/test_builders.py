@@ -33,9 +33,10 @@ class BuilderEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = builders.BuilderEndpoint
     resourceTypeClass = builders.Builder
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        return self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Builder(id=1, name='buildera'),
             fakedb.Builder(id=2, name='builderb'),
             fakedb.Builder(id=3, name='builder unicode \N{SNOWMAN}'),
@@ -105,9 +106,10 @@ class BuildersEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = builders.BuildersEndpoint
     resourceTypeClass = builders.Builder
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        return self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Project(id=201, name='project201'),
             fakedb.Project(id=202, name='project202'),
             fakedb.Builder(id=1, name='buildera'),
@@ -217,14 +219,19 @@ class BuildersEndpoint(endpoint.EndpointMixin, unittest.TestCase):
 
 
 class Builder(interfaces.InterfaceTests, TestReactorMixin, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
         self.rtype = builders.Builder(self.master)
-        return self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
             fakedb.Master(id=13),
             fakedb.Master(id=14),
         ])
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def test_signature_findBuilderId(self):
         @self.assertArgSpecMatches(

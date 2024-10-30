@@ -60,7 +60,7 @@ class FakeResponse:
 class OAuth2Auth(TestReactorMixin, www.WwwTestMixin, ConfigErrorsMixin, unittest.TestCase):
     @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         if requests is None:
             raise unittest.SkipTest("Need to install requests to test oauth2")
 
@@ -97,13 +97,13 @@ class OAuth2Auth(TestReactorMixin, www.WwwTestMixin, ConfigErrorsMixin, unittest
             self.bitbucketAuth,
             self.githubAuthEnt_v4,
         ]:
-            self._master = master = self.make_master(url='h:/a/b/', auth=auth)
+            self._master = master = yield self.make_master(url='h:/a/b/', auth=auth)
             auth.reconfigAuth(master, master.config)
 
         self.githubAuth_secret = oauth2.GitHubAuth(
             Secret("client-id"), Secret("client-secret"), apiVersion=4
         )
-        self._master = master = self.make_master(url='h:/a/b/', auth=auth)
+        self._master = master = yield self.make_master(url='h:/a/b/', auth=auth)
         fake_storage_service = FakeSecretStorage()
         fake_storage_service.reconfigService(
             secretdict={"client-id": "secretClientId", "client-secret": "secretClientSecret"}
@@ -112,6 +112,10 @@ class OAuth2Auth(TestReactorMixin, www.WwwTestMixin, ConfigErrorsMixin, unittest
         secret_service.services = [fake_storage_service]
         yield secret_service.setServiceParent(self._master)
         self.githubAuth_secret.reconfigAuth(master, master.config)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def test_getGoogleLoginURL(self):
@@ -551,8 +555,9 @@ class OAuth2AuthGitHubE2E(TestReactorMixin, www.WwwTestMixin, unittest.TestCase)
     def _instantiateAuth(self, cls, config):
         return cls(config["CLIENTID"], config["CLIENTSECRET"])
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
 
         if requests is None:
             raise unittest.SkipTest("Need to install requests to test oauth2")
@@ -571,7 +576,7 @@ class OAuth2AuthGitHubE2E(TestReactorMixin, www.WwwTestMixin, unittest.TestCase)
 
         # 5000 has to be hardcoded, has oauth clientids are bound to a fully
         # classified web site
-        master = self.make_master(url='http://localhost:5000/', auth=self.auth)
+        master = yield self.make_master(url='http://localhost:5000/', auth=self.auth)
         self.auth.reconfigAuth(master, master.config)
 
     def tearDown(self):
@@ -583,6 +588,7 @@ class OAuth2AuthGitHubE2E(TestReactorMixin, www.WwwTestMixin, unittest.TestCase)
         for reader in reactor.getReaders():
             if isinstance(reader, Server):
                 reader.connectionLost(f)
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def test_E2E(self):

@@ -46,20 +46,22 @@ if TYPE_CHECKING:
 class MigrateTestMixin(TestReactorMixin, db.RealDatabaseMixin, dirs.DirsMixin):
     @defer.inlineCallbacks
     def setUpMigrateTest(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.basedir = os.path.abspath("basedir")
         self.setUpDirs('basedir')
 
         yield self.setUpRealDatabase()
 
-        master = fakemaster.make_master(self)
+        master = yield fakemaster.make_master(self)
         self.db = connector.DBConnector(self.basedir)
         yield self.db.setServiceParent(master)
         self.db.pool = self.db_pool
 
+    @defer.inlineCallbacks
     def tearDownMigrateTest(self):
         self.tearDownDirs()
-        return self.tearDownRealDatabase()
+        yield self.tearDownRealDatabase()
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def do_test_migration(self, base_revision, target_revision, setup_thd_cb, verify_thd_cb):

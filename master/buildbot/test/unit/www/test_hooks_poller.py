@@ -35,7 +35,7 @@ class TestPollingChangeHook(TestReactorMixin, unittest.TestCase):
             self.called = True
 
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
 
     @defer.inlineCallbacks
     def setUpRequest(self, args, options=True, activate=True):
@@ -43,7 +43,7 @@ class TestPollingChangeHook(TestReactorMixin, unittest.TestCase):
         self.request.uri = b"/change_hook/poller"
         self.request.method = b"GET"
         www = self.request.site.master.www
-        self.master = master = self.request.site.master = fakemaster.make_master(
+        self.master = master = self.request.site.master = yield fakemaster.make_master(
             self, wantData=True
         )
         master.www = www
@@ -66,8 +66,10 @@ class TestPollingChangeHook(TestReactorMixin, unittest.TestCase):
         yield self.request.test_render(self.changeHook)
         yield util.asyncSleep(0.1)
 
+    @defer.inlineCallbacks
     def tearDown(self):
-        return self.master.stopService()
+        yield self.master.stopService()
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def test_no_args(self):

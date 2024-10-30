@@ -100,11 +100,13 @@ def BRID_TO_BUILD_NUMBER(brid):
 
 class TestTrigger(TestBuildStepMixin, TestReactorMixin, unittest.TestCase):
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         return self.setup_test_build_step()
 
+    @defer.inlineCallbacks
     def tearDown(self):
-        return self.tear_down_test_build_step()
+        yield self.tear_down_test_build_step()
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def setup_step(self, step, sourcestampsInBuild=None, gotRevisionsInBuild=None, *args, **kwargs):
@@ -146,7 +148,7 @@ class TestTrigger(TestBuildStepMixin, TestReactorMixin, unittest.TestCase):
                 builderid=builderid,
             )
 
-        m.db.insert_test_data([
+        yield m.db.insert_test_data([
             fakedb.Builder(id=77, name='A'),
             fakedb.Builder(id=78, name='B'),
             fakedb.Builder(id=79, name='C1'),

@@ -37,6 +37,7 @@ from buildbot.test.util import changesource
 from buildbot.test.util import config
 from buildbot.test.util import logging
 from buildbot.test.util.git_repository import TestGitRepository
+from buildbot.test.util.state import StateTestMixin
 from buildbot.util import bytes2unicode
 from buildbot.util import unicode2bytes
 from buildbot.util.git_credential import GitCredentialOptions
@@ -51,6 +52,7 @@ class TestGitPollerBase(
     changesource.ChangeSourceMixin,
     logging.LoggingMixin,
     TestReactorMixin,
+    StateTestMixin,
     unittest.TestCase,
 ):
     REPOURL = 'git@example.com:~foo/baz.git'
@@ -64,7 +66,7 @@ class TestGitPollerBase(
 
     @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.setup_master_run_process()
         yield self.setUpChangeSource()
         yield self.master.startService()
@@ -75,6 +77,7 @@ class TestGitPollerBase(
     def tearDown(self):
         yield self.master.stopService()
         yield self.tearDownChangeSource()
+        yield self.tear_down_test_reactor()
 
     @async_to_deferred
     async def set_last_rev(self, state: dict[str, str]) -> None:
@@ -1833,7 +1836,7 @@ class TestGitPoller(TestGitPollerBase):
     def test_startService_loadLastRev(self):
         yield self.poller.stopService()
 
-        self.master.db.state.set_fake_state(
+        yield self.set_fake_state(
             self.poller, 'lastRev', {"master": "fa3ae8ed68e664d4db24798611b352e3c6509930"}
         )
 
@@ -2431,7 +2434,7 @@ class TestGitPollerConstructor(
 ):
     @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         yield self.setUpChangeSource()
         yield self.master.startService()
 
@@ -2439,6 +2442,7 @@ class TestGitPollerConstructor(
     def tearDown(self):
         yield self.master.stopService()
         yield self.tearDownChangeSource()
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def test_deprecatedFetchRefspec(self):

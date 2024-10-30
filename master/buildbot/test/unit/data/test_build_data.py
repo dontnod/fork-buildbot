@@ -30,9 +30,10 @@ class TestBuildDataNoValueEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = build_data.BuildDataNoValueEndpoint
     resourceTypeClass = build_data.BuildData
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Worker(id=47, name='linux'),
             fakedb.Buildset(id=20),
             fakedb.Builder(id=88, name='b1'),
@@ -137,9 +138,10 @@ class TestBuildDataEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = build_data.BuildDataEndpoint
     resourceTypeClass = build_data.BuildData
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Worker(id=47, name='linux'),
             fakedb.Buildset(id=20),
             fakedb.Builder(id=88, name='b1'),
@@ -259,9 +261,10 @@ class TestBuildDatasNoValueEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = build_data.BuildDatasNoValueEndpoint
     resourceTypeClass = build_data.BuildData
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Worker(id=47, name='linux'),
             fakedb.Buildset(id=20),
             fakedb.Builder(id=88, name='b1'),
@@ -327,10 +330,15 @@ class TestBuildDatasNoValueEndpoint(endpoint.EndpointMixin, unittest.TestCase):
 
 
 class TestBuildData(TestReactorMixin, interfaces.InterfaceTests, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
         self.rtype = build_data.BuildData(self.master)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def test_signature_set_build_data(self):
         @self.assertArgSpecMatches(self.master.data.updates.setBuildData, self.rtype.setBuildData)

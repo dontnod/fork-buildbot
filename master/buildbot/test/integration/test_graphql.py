@@ -68,9 +68,7 @@ class GraphQL(unittest.TestCase, TestReactorMixin):
     def setUp(self):
         self.setup_test_reactor(use_asyncio=True)
 
-        master = fakemaster.make_master(self)
-        master.db = fakedb.FakeDBConnector(self)
-        yield master.db.setServiceParent(master)
+        master = yield fakemaster.make_master(self, wantDb=True)
 
         master.config.mq = {'type': "simple"}
         master.mq = mqconnector.MQConnector()
@@ -102,8 +100,9 @@ class GraphQL(unittest.TestCase, TestReactorMixin):
     def tearDown(self):
         yield self.master.stopService()
 
+    @defer.inlineCallbacks
     def insert_initial_data(self):
-        self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
             fakedb.Master(id=1),
             fakedb.Worker(id=1, name='example-worker'),
             fakedb.Scheduler(id=1, name='custom', enabled=1),

@@ -120,10 +120,15 @@ def sampleSummaryCBDeferred(buildInfoList, results, master, arg):
 
 
 class TestGerritStatusPush(TestReactorMixin, unittest.TestCase, ReporterTestMixin):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.setup_reporter_test()
-        self.master = fakemaster.make_master(self, wantData=True, wantDb=True, wantMq=True)
+        self.master = yield fakemaster.make_master(self, wantData=True, wantDb=True, wantMq=True)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def setupGerritStatusPushSimple(self, *args, **kwargs):
@@ -142,7 +147,7 @@ class TestGerritStatusPush(TestReactorMixin, unittest.TestCase, ReporterTestMixi
 
     @defer.inlineCallbacks
     def setupBuildResults(self, buildResults, finalResult):
-        self.insert_test_data(buildResults, finalResult)
+        yield self.insert_test_data(buildResults, finalResult)
         res = yield utils.getDetailsForBuildset(self.master, 98, want_properties=True)
         builds = res['builds']
         buildset = res['buildset']
@@ -675,7 +680,7 @@ class TestGerritStatusPush(TestReactorMixin, unittest.TestCase, ReporterTestMixi
 
     @defer.inlineCallbacks
     def test_extract_project_revision(self):
-        self.insert_test_data([SUCCESS], SUCCESS)
+        yield self.insert_test_data([SUCCESS], SUCCESS)
         res = yield utils.getDetailsForBuildset(self.master, 98, want_properties=True)
         report = {"builds": res["builds"], "buildset": res["buildset"]}
 
@@ -685,8 +690,8 @@ class TestGerritStatusPush(TestReactorMixin, unittest.TestCase, ReporterTestMixi
 
     @defer.inlineCallbacks
     def test_extract_project_revision_no_build(self):
-        self.insert_test_data([], SUCCESS)
-        self.db.insert_test_data([
+        yield self.insert_test_data([], SUCCESS)
+        yield self.db.insert_test_data([
             fakedb.BuildsetProperty(
                 buildsetid=98, property_name="event.change.id", property_value='["12345", "fakedb"]'
             ),

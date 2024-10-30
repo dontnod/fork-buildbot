@@ -19,6 +19,7 @@ from twisted.trial import unittest
 from buildbot.test.fake import fakemaster
 from buildbot.test.reactor import TestReactorMixin
 from buildbot.test.util import scheduler
+from buildbot.test.util.state import StateTestMixin
 from buildbot.util import codebase
 from buildbot.util import state
 
@@ -31,21 +32,29 @@ class FakeObject(codebase.AbsoluteSourceStampsMixin, state.StateMixin):
         self.codebases = codebases
 
 
-class TestAbsoluteSourceStampsMixin(unittest.TestCase, scheduler.SchedulerMixin, TestReactorMixin):
+class TestAbsoluteSourceStampsMixin(
+    unittest.TestCase, scheduler.SchedulerMixin, StateTestMixin, TestReactorMixin
+):
     codebases = {
         'a': {'repository': '', 'branch': 'master'},
         'b': {'repository': '', 'branch': 'master'},
     }
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantDb=True, wantData=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantDb=True, wantData=True)
         self.db = self.master.db
         self.object = FakeObject(self.master, self.codebases)
 
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
+
+    @defer.inlineCallbacks
     def mkch(self, **kwargs):
         ch = self.makeFakeChange(**kwargs)
-        self.master.db.changes.fakeAddChangeInstance(ch)
+        ch = yield self.addFakeChange(ch)
         return ch
 
     @defer.inlineCallbacks
@@ -60,7 +69,7 @@ class TestAbsoluteSourceStampsMixin(unittest.TestCase, scheduler.SchedulerMixin,
 
     @defer.inlineCallbacks
     def test_getCodebaseDict_existing(self):
-        self.db.state.set_fake_state(
+        yield self.set_fake_state(
             self.object,
             'lastCodebases',
             {
@@ -82,9 +91,13 @@ class TestAbsoluteSourceStampsMixin(unittest.TestCase, scheduler.SchedulerMixin,
     @defer.inlineCallbacks
     def test_recordChange(self):
         yield self.object.recordChange(
-            self.mkch(codebase='a', repository='A', revision='1234:abc', branch='master', number=10)
+            (
+                yield self.mkch(
+                    codebase='a', repository='A', revision='1234:abc', branch='master', number=500
+                )
+            )
         )
-        self.db.state.assertStateByClass(
+        yield self.assert_state_by_class(
             'fake-name',
             'FakeObject',
             lastCodebases={
@@ -92,14 +105,14 @@ class TestAbsoluteSourceStampsMixin(unittest.TestCase, scheduler.SchedulerMixin,
                     'repository': 'A',
                     'revision': '1234:abc',
                     'branch': 'master',
-                    'lastChange': 10,
+                    'lastChange': 500,
                 }
             },
         )
 
     @defer.inlineCallbacks
     def test_recordChange_older(self):
-        self.db.state.set_fake_state(
+        yield self.set_fake_state(
             self.object,
             'lastCodebases',
             {
@@ -107,15 +120,19 @@ class TestAbsoluteSourceStampsMixin(unittest.TestCase, scheduler.SchedulerMixin,
                     'repository': 'A',
                     'revision': '2345:bcd',
                     'branch': 'master',
-                    'lastChange': 20,
+                    'lastChange': 510,
                 }
             },
         )
         yield self.object.getCodebaseDict('a')
         yield self.object.recordChange(
-            self.mkch(codebase='a', repository='A', revision='1234:abc', branch='master', number=10)
+            (
+                yield self.mkch(
+                    codebase='a', repository='A', revision='1234:abc', branch='master', number=500
+                )
+            )
         )
-        self.db.state.assertStateByClass(
+        yield self.assert_state_by_class(
             'fake-name',
             'FakeObject',
             lastCodebases={
@@ -123,14 +140,14 @@ class TestAbsoluteSourceStampsMixin(unittest.TestCase, scheduler.SchedulerMixin,
                     'repository': 'A',
                     'revision': '2345:bcd',
                     'branch': 'master',
-                    'lastChange': 20,
+                    'lastChange': 510,
                 }
             },
         )
 
     @defer.inlineCallbacks
     def test_recordChange_newer(self):
-        self.db.state.set_fake_state(
+        yield self.set_fake_state(
             self.object,
             'lastCodebases',
             {
@@ -138,16 +155,20 @@ class TestAbsoluteSourceStampsMixin(unittest.TestCase, scheduler.SchedulerMixin,
                     'repository': 'A',
                     'revision': '1234:abc',
                     'branch': 'master',
-                    'lastChange': 10,
+                    'lastChange': 490,
                 }
             },
         )
 
         yield self.object.getCodebaseDict('a')
         yield self.object.recordChange(
-            self.mkch(codebase='a', repository='A', revision='2345:bcd', branch='master', number=20)
+            (
+                yield self.mkch(
+                    codebase='a', repository='A', revision='2345:bcd', branch='master', number=500
+                )
+            )
         )
-        self.db.state.assertStateByClass(
+        yield self.assert_state_by_class(
             'fake-name',
             'FakeObject',
             lastCodebases={
@@ -155,7 +176,7 @@ class TestAbsoluteSourceStampsMixin(unittest.TestCase, scheduler.SchedulerMixin,
                     'repository': 'A',
                     'revision': '2345:bcd',
                     'branch': 'master',
-                    'lastChange': 20,
+                    'lastChange': 500,
                 }
             },
         )

@@ -46,7 +46,7 @@ class Tests(interfaces.InterfaceTests):
 
     def setUpTests(self):
         # set up a sourcestamp and buildset for use below
-        self.MASTER_ID = fakedb.FakeBuildRequestsComponent.MASTER_ID
+        self.MASTER_ID = fakedb.FakeDBConnector.MASTER_ID
         self.OTHER_MASTER_ID = self.MASTER_ID + 1111
         self.db.master.masterid = self.MASTER_ID
 
@@ -670,19 +670,6 @@ class Tests(interfaces.InterfaceTests):
         return self.do_test_unclaimMethod(
             lambda: self.db.buildrequests.unclaimBuildRequests(to_unclaim), [45, 47, 48]
         )
-
-
-class TestFakeDB(unittest.TestCase, connector_component.FakeConnectorComponentMixin, Tests):
-    # Compatibility with some checks in the "real" tests.
-
-    class db_engine:
-        class dialect:
-            name = 'buildbot_fake'
-
-    @defer.inlineCallbacks
-    def setUp(self):
-        yield self.setUpConnectorComponent()
-        yield self.setUpTests()
 
 
 class TestRealDB(unittest.TestCase, connector_component.ConnectorComponentMixin, Tests):

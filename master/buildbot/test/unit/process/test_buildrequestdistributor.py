@@ -45,8 +45,9 @@ def nth_worker(n):
 
 
 class TestBRDBase(TestReactorMixin, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.botmaster = mock.Mock(name='botmaster')
         self.botmaster.builders = {}
         self.builders = {}
@@ -55,7 +56,7 @@ class TestBRDBase(TestReactorMixin, unittest.TestCase):
             # simple sort-by-name by default
             return sorted(builders, key=lambda b1: b1.name)
 
-        self.master = self.botmaster.master = fakemaster.make_master(
+        self.master = self.botmaster.master = yield fakemaster.make_master(
             self, wantData=True, wantDb=True
         )
         self.master.caches = fakemaster.FakeCaches()
@@ -72,10 +73,11 @@ class TestBRDBase(TestReactorMixin, unittest.TestCase):
             fakedb.BuildsetSourceStamp(sourcestampid=21, buildsetid=11),
         ]
 
+    @defer.inlineCallbacks
     def tearDown(self):
         if self.brd.running:
-            return self.brd.stopService()
-        return None
+            yield self.brd.stopService()
+        yield self.tear_down_test_reactor()
 
     def make_workers(self, worker_count):
         rows = self.base_rows[:]
@@ -732,8 +734,8 @@ class TestMaybeStartBuilds(TestBRDBase):
             self.master.db.buildrequests.claimBuildRequests = old_claimBuildRequests
             # claim brid 10 for some other master
             assert 10 in brids
-            self.master.db.buildrequests.fakeClaimBuildRequest(
-                10, 136000, masterid=9999
+            self.master.db.buildrequests._claim_buildrequests_for_master(
+                [10], 136000, 9999
             )  # some other masterid
             # ..and fail
             return defer.fail(buildrequests.AlreadyClaimedError())

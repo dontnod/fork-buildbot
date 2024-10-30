@@ -25,12 +25,15 @@ from buildbot.test.util import scheduler
 class Timed(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase):
     OBJECTID = 928754
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.setUpScheduler()
+        self.setup_test_reactor(auto_tear_down=False)
+        yield self.setUpScheduler()
 
+    @defer.inlineCallbacks
     def tearDown(self):
         self.tearDownScheduler()
+        yield self.tear_down_test_reactor()
 
     class Subclass(timed.Timed):
         def getNextBuildTime(self, lastActuation):
@@ -41,8 +44,9 @@ class Timed(scheduler.SchedulerMixin, TestReactorMixin, unittest.TestCase):
             self.started_build = True
             return defer.succeed(None)
 
+    @defer.inlineCallbacks
     def makeScheduler(self, firstBuildDuration=0, **kwargs):
-        sched = self.attachScheduler(self.Subclass(**kwargs), self.OBJECTID)
+        sched = yield self.attachScheduler(self.Subclass(**kwargs), self.OBJECTID)
         self.clock = sched._reactor = task.Clock()
         return sched
 

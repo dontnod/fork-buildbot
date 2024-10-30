@@ -63,7 +63,7 @@ class TestKubernetesWorker(TestReactorMixin, unittest.TestCase):
     worker = None
 
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
 
     @defer.inlineCallbacks
     def setupWorker(self, *args, config=None, **kwargs):
@@ -75,7 +75,7 @@ class TestKubernetesWorker(TestReactorMixin, unittest.TestCase):
         worker = kubernetes.KubeLatentWorker(
             *args, masterFQDN="buildbot-master", kube_config=config, **kwargs
         )
-        self.master = fakemaster.make_master(self, wantData=True)
+        self.master = yield fakemaster.make_master(self, wantData=True)
         self._http = yield fakehttpclientservice.HTTPClientService.getService(
             self.master, self, "https://kube.example.com"
         )
@@ -85,6 +85,10 @@ class TestKubernetesWorker(TestReactorMixin, unittest.TestCase):
         self.assertTrue(config.running)
         self.addCleanup(self.master.stopService)
         return worker
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def get_expected_metadata(self):
         return {"name": "buildbot-worker-87de7e"}

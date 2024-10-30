@@ -32,9 +32,10 @@ class BuildsetPropertiesEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = properties.BuildsetPropertiesEndpoint
     resourceTypeClass = properties.Properties
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Buildset(id=13, reason='because I said so'),
             fakedb.SourceStamp(id=92),
             fakedb.SourceStamp(id=93),
@@ -58,9 +59,10 @@ class BuildPropertiesEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = properties.BuildPropertiesEndpoint
     resourceTypeClass = properties.Properties
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Builder(id=1),
             fakedb.Buildset(id=28),
             fakedb.BuildRequest(id=5, buildsetid=28, builderid=1),
@@ -87,10 +89,15 @@ class BuildPropertiesEndpoint(endpoint.EndpointMixin, unittest.TestCase):
 
 
 class Properties(interfaces.InterfaceTests, TestReactorMixin, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantMq=False, wantDb=True, wantData=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantMq=False, wantDb=True, wantData=True)
         self.rtype = properties.Properties(self.master)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def do_test_callthrough(
@@ -125,12 +132,13 @@ class Properties(interfaces.InterfaceTests, TestReactorMixin, unittest.TestCase)
 
     @defer.inlineCallbacks
     def test_setBuildProperties(self):
-        self.master.db.insert_test_data([
+        yield self.master.db.insert_test_data([
+            fakedb.Builder(id=1),
             fakedb.Buildset(id=28),
-            fakedb.BuildRequest(id=5, buildsetid=28),
+            fakedb.BuildRequest(id=5, builderid=1, buildsetid=28),
             fakedb.Master(id=3),
             fakedb.Worker(id=42, name="Friday"),
-            fakedb.Build(id=1234, buildrequestid=5, masterid=3, workerid=42),
+            fakedb.Build(id=1234, builderid=1, buildrequestid=5, masterid=3, workerid=42),
         ])
 
         self.master.db.builds.setBuildProperty = mock.Mock(

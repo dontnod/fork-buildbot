@@ -52,7 +52,7 @@ class ConnectorComponentMixin(TestReactorMixin, db.RealDatabaseMixin):
     @defer.inlineCallbacks
     def setUpConnectorComponent(self, table_names=None, basedir='basedir', dialect_name='sqlite'):
         """Set up C{self.db}, using the given db_url and basedir."""
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
 
         if table_names is None:
             table_names = []
@@ -63,7 +63,7 @@ class ConnectorComponentMixin(TestReactorMixin, db.RealDatabaseMixin):
         self.db.pool = self.db_pool
         self.db.upsert = get_upsert_method(self.db_engine)
         self.db.has_native_upsert = self.db.upsert != get_upsert_method(None)
-        self.db.master = fakemaster.make_master(self)
+        self.db.master = yield fakemaster.make_master(self)
         self.db.model = model.Model(self.db)
         self.db._engine = types.SimpleNamespace(dialect=types.SimpleNamespace(name=dialect_name))
 
@@ -74,16 +74,20 @@ class ConnectorComponentMixin(TestReactorMixin, db.RealDatabaseMixin):
         del self.db.pool
         del self.db.model
         del self.db
+        yield self.tear_down_test_reactor()
 
 
 class FakeConnectorComponentMixin(TestReactorMixin):
     # Just like ConnectorComponentMixin, but for working with fake database
 
+    @defer.inlineCallbacks
     def setUpConnectorComponent(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantDb=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantDb=True)
         self.db = self.master.db
         self.db.checkForeignKeys = True
         self.insert_test_data = self.db.insert_test_data
 
-        return defer.succeed(None)
+    @defer.inlineCallbacks
+    def tearDownConnectorComponent(self):
+        yield self.tear_down_test_reactor()

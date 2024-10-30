@@ -81,14 +81,18 @@ class TestUpcloudWorker(TestReactorMixin, unittest.TestCase):
     worker = None
 
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def setupWorker(self, *args, **kwargs):
         worker = upcloud.UpcloudLatentWorker(
             *args, api_username='test-api-user', api_password='test-api-password', **kwargs
         )
-        master = fakemaster.make_master(self, wantData=True)
+        master = yield fakemaster.make_master(self, wantData=True)
         self._http = worker.client = yield fakehttpclientservice.HTTPClientService.getService(
             master,
             self,

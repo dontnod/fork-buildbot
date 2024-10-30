@@ -51,7 +51,11 @@ class Utils(unittest.TestCase):
 
 class TestConfigResource(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def test_render(self):
@@ -60,7 +64,7 @@ class TestConfigResource(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
 
         custom_versions = [['test compoent', '0.1.2'], ['test component 2', '0.2.1']]
 
-        master = self.make_master(url='h:/a/b/', auth=_auth, versions=custom_versions)
+        master = yield self.make_master(url='h:/a/b/', auth=_auth, versions=custom_versions)
         rsrc = config.ConfigResource(master)
         rsrc.reconfigResource(master.config)
 
@@ -84,7 +88,11 @@ class TestConfigResource(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
 
 class IndexResourceTest(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def get_react_base_path(self):
         path = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -130,7 +138,9 @@ class IndexResourceTest(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
 
         custom_versions = [['test compoent', '0.1.2'], ['test component 2', '0.2.1']]
 
-        master = self.make_master(url='h:/a/b/', auth=_auth, versions=custom_versions, plugins={})
+        master = yield self.make_master(
+            url='h:/a/b/', auth=_auth, versions=custom_versions, plugins={}
+        )
         if user_info is not None:
             master.session.user_info = user_info
 

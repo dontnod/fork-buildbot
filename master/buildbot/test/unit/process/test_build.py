@@ -108,6 +108,7 @@ class FakeBuilder:
     def __init__(self, master):
         self.config = Mock()
         self.config.workerbuilddir = 'wbd'
+        self.config.description = 'builder-description'
         self.name = 'fred'
         self.master = master
         self.botmaster = master.botmaster
@@ -178,15 +179,16 @@ def makeControllableStepFactory():
 
 
 class TestBuild(TestReactorMixin, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         r = FakeRequest()
         r.sources = [FakeSource()]
         r.sources[0].changes = [FakeChange()]
         r.sources[0].revision = "12345"
 
         self.request = r
-        self.master = fakemaster.make_master(self, wantData=True)
+        self.master = yield fakemaster.make_master(self, wantData=True)
 
         self.worker = worker.FakeWorker(self.master)
         self.worker.attached(None)
@@ -203,6 +205,10 @@ class TestBuild(TestReactorMixin, unittest.TestCase):
         self.build.workerforbuilder = self.workerforbuilder
         self.build.text = []
         self.build.buildid = 666
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def assertWorkerPreparationFailure(self, reason):
         states = "".join(self.master.data.updates.stepStateString.values())
@@ -884,9 +890,10 @@ class TestBuild(TestReactorMixin, unittest.TestCase):
 
 
 class TestMultipleSourceStamps(TestReactorMixin, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self)
         self.builder = FakeBuilder(self.master)
 
         r = FakeRequest()
@@ -909,6 +916,10 @@ class TestMultipleSourceStamps(TestReactorMixin, unittest.TestCase):
 
         self.build = Build([r], self.builder)
 
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
+
     def test_buildReturnSourceStamp(self):
         """
         Test that a build returns the correct sourcestamp
@@ -930,9 +941,10 @@ class TestMultipleSourceStamps(TestReactorMixin, unittest.TestCase):
 
 
 class TestBuildBlameList(TestReactorMixin, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self)
         self.builder = FakeBuilder(self.master)
 
         self.sourceByMe = FakeSource()
@@ -956,6 +968,10 @@ class TestBuildBlameList(TestReactorMixin, unittest.TestCase):
         self.patchSource.revision = "67890"
         self.patchSource.patch_info = ("jeff", "jeff's new feature")
 
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
+
     def test_blamelist_for_changes(self):
         r = FakeRequest()
         r.sources.extend([self.sourceByMe, self.sourceByHim])
@@ -978,8 +994,9 @@ class TestSetupProperties_MultipleSources(TestReactorMixin, unittest.TestCase):
     initialized properly
     """
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.props = {}
         self.r = FakeRequest()
         self.r.sources = []
@@ -994,11 +1011,15 @@ class TestSetupProperties_MultipleSources(TestReactorMixin, unittest.TestCase):
         self.r.sources[1].repository = "http://svn-repo-B"
         self.r.sources[1].codebase = "B"
         self.r.sources[1].revision = "34567"
-        self.builder = FakeBuilder(fakemaster.make_master(self, wantData=True))
+        self.builder = FakeBuilder((yield fakemaster.make_master(self, wantData=True)))
         self.build = Build([self.r], self.builder)
         self.build.setStepFactories([])
         # record properties that will be set
         self.build.properties.setProperty = self.setProperty
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def setProperty(self, n, v, s, runtime=False):
         if s not in self.props:
@@ -1022,8 +1043,9 @@ class TestSetupProperties_SingleSource(TestReactorMixin, unittest.TestCase):
     initialized properly
     """
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.props = {}
         self.r = FakeRequest()
         self.r.sources = []
@@ -1033,11 +1055,15 @@ class TestSetupProperties_SingleSource(TestReactorMixin, unittest.TestCase):
         self.r.sources[0].codebase = "A"
         self.r.sources[0].branch = "develop"
         self.r.sources[0].revision = "12345"
-        self.builder = FakeBuilder(fakemaster.make_master(self, wantData=True))
+        self.builder = FakeBuilder((yield fakemaster.make_master(self, wantData=True)))
         self.build = Build([self.r], self.builder)
         self.build.setStepFactories([])
         # record properties that will be set
         self.build.properties.setProperty = self.setProperty
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def setProperty(self, n, v, s, runtime=False):
         if s not in self.props:

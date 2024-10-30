@@ -30,9 +30,10 @@ class TestResultsEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = test_results.TestResultsEndpoint
     resourceTypeClass = test_results.TestResult
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Worker(id=47, name='linux'),
             fakedb.Buildset(id=20),
             fakedb.Builder(id=88, name='b1'),
@@ -95,10 +96,15 @@ class TestResultsEndpoint(endpoint.EndpointMixin, unittest.TestCase):
 
 
 class TestResult(TestReactorMixin, interfaces.InterfaceTests, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
         self.rtype = test_results.TestResult(self.master)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def test_signature_add_test_results(self):
         @self.assertArgSpecMatches(

@@ -652,6 +652,7 @@ class TestBuildStepMixin:
     @ivar properties: build properties (L{Properties} instance)
     """
 
+    @defer.inlineCallbacks
     def setup_test_build_step(
         self,
         want_data=True,
@@ -667,7 +668,7 @@ class TestBuildStepMixin:
         self._expected_commands: list[Expect] = []
         self._expected_commands_popped = 0
 
-        self.master = fakemaster.make_master(
+        self.master = yield fakemaster.make_master(
             self,
             wantData=want_data,
             wantDb=want_db,
@@ -1126,8 +1127,9 @@ class TestBuildStepMixin:
         return FakeRunProcess(start_retval, result_rc)
 
     def change_worker_system(self, system):
+        assert system != 'win32'
         self.worker.worker_system = system
-        if system in ['nt', 'win32']:
+        if system == 'nt':
             self.build.path_module = namedModule('ntpath')
             self.worker.worker_basedir = '\\wrk'
         else:

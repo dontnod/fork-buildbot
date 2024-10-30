@@ -36,10 +36,11 @@ class V3RootResource(TestReactorMixin, www.WwwTestMixin, unittest.TestCase):
     if not graphql_core:
         skip = "graphql is required for V3RootResource tests"
 
+    @defer.inlineCallbacks
     def setUp(self):
         self.patch(connector.DataConnector, 'submodules', [])
         self.setup_test_reactor(use_asyncio=True)
-        self.master = self.make_master(url="http://server/path/", wantGraphql=True)
+        self.master = yield self.make_master(url="http://server/path/", wantGraphql=True)
         self.master.config.www["graphql"] = {"debug": True}
         self.rsrc = graphql.V3RootResource(self.master)
         self.rsrc.reconfigResource(self.master.config)
@@ -222,11 +223,16 @@ class DisabledV3RootResource(TestReactorMixin, www.WwwTestMixin, unittest.TestCa
     if not graphql_core:
         skip = "graphql is required for V3RootResource tests"
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = self.make_master(url="http://server/path/")
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield self.make_master(url="http://server/path/")
         self.rsrc = graphql.V3RootResource(self.master)
         self.rsrc.reconfigResource(self.master.config)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def test_basic_disabled(self):

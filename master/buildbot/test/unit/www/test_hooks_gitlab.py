@@ -1017,11 +1017,15 @@ def FakeRequestMR(content):
 
 
 class TestChangeHookConfiguredWithGitChange(unittest.TestCase, TestReactorMixin):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.changeHook = change_hook.ChangeHookResource(
-            dialects={'gitlab': True}, master=fakeMasterForHooks(self)
-        )
+        self.setup_test_reactor(auto_tear_down=False)
+        master = yield fakeMasterForHooks(self)
+        self.changeHook = change_hook.ChangeHookResource(dialects={'gitlab': True}, master=master)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     def check_changes_tag_event(self, r, project='', codebase=None):
         self.assertEqual(len(self.changeHook.master.data.updates.changesAdded), 2)
@@ -1246,9 +1250,10 @@ class TestChangeHookConfiguredWithGitChange(unittest.TestCase, TestReactorMixin)
 class TestChangeHookConfiguredWithSecret(unittest.TestCase, TestReactorMixin):
     _SECRET = 'thesecret'
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakeMasterForHooks(self)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakeMasterForHooks(self)
 
         fakeStorageService = FakeSecretStorage()
         fakeStorageService.reconfigService(secretdict={"secret_key": self._SECRET})
@@ -1260,6 +1265,10 @@ class TestChangeHookConfiguredWithSecret(unittest.TestCase, TestReactorMixin):
         self.changeHook = change_hook.ChangeHookResource(
             dialects={'gitlab': {'secret': util.Secret("secret_key")}}, master=self.master
         )
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def test_missing_secret(self):

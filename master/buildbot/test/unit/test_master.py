@@ -34,6 +34,7 @@ from buildbot.process.properties import Interpolate
 from buildbot.secrets.manager import SecretManager
 from buildbot.test import fakedb
 from buildbot.test.fake import fakedata
+from buildbot.test.fake import fakemaster
 from buildbot.test.fake import fakemq
 from buildbot.test.fake.botmaster import FakeBotMaster
 from buildbot.test.fake.secrets import FakeSecretStorage
@@ -52,9 +53,7 @@ class FailingLoader:
 class DefaultLoader:
     def loadConfig(self):
         master_cfg = MasterConfig()
-        master_cfg.db['db_url'] = Interpolate(
-            "postgresql+psycopg2://buildbot:%(secret:db_pwd)s@localhost:3306/bbtest"
-        )
+        master_cfg.db['db_url'] = Interpolate('sqlite:///path-to-%(secret:db_pwd)s-db-file')
         master_cfg.secretsProviders = [FakeSecretStorage(secretdict={'db_pwd': 's3cr3t'})]
         return master_cfg
 
@@ -80,7 +79,7 @@ class InitTests(unittest.SynchronousTestCase):
 class StartupAndReconfig(dirs.DirsMixin, logging.LoggingMixin, TestReactorMixin, unittest.TestCase):
     @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
+        self.setup_test_reactor(auto_tear_down=False)
         self.setUpLogging()
         self.basedir = os.path.abspath('basedir')
         yield self.setUpDirs(self.basedir)
@@ -98,17 +97,20 @@ class StartupAndReconfig(dirs.DirsMixin, logging.LoggingMixin, TestReactorMixin,
         )
         self.master.sendBuildbotNetUsageData = mock.Mock()
         self.master.botmaster = FakeBotMaster()
+        self.master.caches = fakemaster.FakeCaches()
         self.secrets_manager = self.master.secrets_manager = SecretManager()
         yield self.secrets_manager.setServiceParent(self.master)
-        self.db = self.master.db = fakedb.FakeDBConnector(self)
+        self.db = self.master.db = fakedb.FakeDBConnector(self.basedir, self, auto_upgrade=True)
         yield self.db.setServiceParent(self.master)
         self.mq = self.master.mq = fakemq.FakeMQConnector(self)
         yield self.mq.setServiceParent(self.master)
         self.data = self.master.data = fakedata.FakeDataConnector(self.master, self)
         yield self.data.setServiceParent(self.master)
 
+    @defer.inlineCallbacks
     def tearDown(self):
-        return self.tearDownDirs()
+        yield self.tearDownDirs()
+        yield self.tear_down_test_reactor()
 
     # tests
     @defer.inlineCallbacks
@@ -154,7 +156,7 @@ class StartupAndReconfig(dirs.DirsMixin, logging.LoggingMixin, TestReactorMixin,
 
         self.assertEqual(
             self.master.db.configured_url,
-            'postgresql+psycopg2://buildbot:s3cr3t@localhost:3306/bbtest',
+            'sqlite:///path-to-s3cr3t-db-file',
         )
 
         self.assertTrue(self.master.data.updates.thisMasterActive)
@@ -221,12 +223,12 @@ class StartupAndReconfig(dirs.DirsMixin, logging.LoggingMixin, TestReactorMixin,
     @defer.inlineCallbacks
     def test_reconfigService_db_url_changed(self):
         old = self.master.config = MasterConfig()
-        old.db['db_url'] = Interpolate('%(secret:db_pwd)s')
+        old.db['db_url'] = Interpolate('sqlite:///%(secret:db_pwd)s')
         old.secretsProviders = [FakeSecretStorage(secretdict={'db_pwd': 's3cr3t'})]
         yield self.master.secrets_manager.setup()
         yield self.master.db.setup()
         yield self.master.reconfigServiceWithBuildbotConfig(old)
-        self.assertEqual(self.master.db.configured_url, 's3cr3t')
+        self.assertEqual(self.master.db.configured_url, 'sqlite:///s3cr3t')
 
         new = MasterConfig()
         new.db['db_url'] = old.db['db_url']

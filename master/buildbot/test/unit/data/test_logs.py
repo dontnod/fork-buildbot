@@ -31,14 +31,15 @@ class LogEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = logs.LogEndpoint
     resourceTypeClass = logs.Log
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Builder(id=77, name='builder77'),
             fakedb.Master(id=88),
             fakedb.Worker(id=13, name='wrk'),
             fakedb.Buildset(id=8822),
-            fakedb.BuildRequest(id=82, buildsetid=8822),
+            fakedb.BuildRequest(id=82, builderid=77, buildsetid=8822),
             fakedb.Build(
                 id=13, builderid=77, masterid=88, workerid=13, buildrequestid=82, number=3
             ),
@@ -116,14 +117,15 @@ class LogsEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = logs.LogsEndpoint
     resourceTypeClass = logs.Log
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Builder(id=77),
             fakedb.Master(id=88),
             fakedb.Worker(id=13, name='wrk'),
             fakedb.Buildset(id=8822),
-            fakedb.BuildRequest(id=82, buildsetid=8822),
+            fakedb.BuildRequest(id=82, builderid=77, buildsetid=8822),
             fakedb.Build(
                 id=13, builderid=77, masterid=88, workerid=13, buildrequestid=82, number=3
             ),
@@ -196,10 +198,15 @@ class LogsEndpoint(endpoint.EndpointMixin, unittest.TestCase):
 
 
 class Log(TestReactorMixin, interfaces.InterfaceTests, unittest.TestCase):
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
         self.rtype = logs.Log(self.master)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def do_test_callthrough(

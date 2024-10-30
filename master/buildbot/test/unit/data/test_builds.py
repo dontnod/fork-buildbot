@@ -33,9 +33,10 @@ class BuildEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = builds.BuildEndpoint
     resourceTypeClass = builds.Build
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Builder(id=77, name='builder77'),
             fakedb.Master(id=88),
             fakedb.Worker(id=13, name='wrk'),
@@ -137,16 +138,17 @@ class BuildsEndpoint(endpoint.EndpointMixin, unittest.TestCase):
     endpointClass = builds.BuildsEndpoint
     resourceTypeClass = builds.Build
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setUpEndpoint()
-        self.db.insert_test_data([
+        yield self.setUpEndpoint()
+        yield self.db.insert_test_data([
             fakedb.Builder(id=77, name='builder77'),
             fakedb.Builder(id=78, name='builder78'),
             fakedb.Builder(id=79, name='builder79'),
             fakedb.Master(id=88),
             fakedb.Worker(id=13, name='wrk'),
             fakedb.Buildset(id=8822),
-            fakedb.BuildRequest(id=82, buildsetid=8822),
+            fakedb.BuildRequest(id=82, builderid=77, buildsetid=8822),
             fakedb.Build(
                 id=13, builderid=77, masterid=88, workerid=13, buildrequestid=82, number=3
             ),
@@ -329,17 +331,33 @@ class Build(interfaces.InterfaceTests, TestReactorMixin, unittest.TestCase):
         'complete_at': None,
         "locks_duration_s": 0,
         'masterid': 824,
-        'number': 1,
+        'number': 43,
         'results': None,
         'started_at': epoch2datetime(1),
         'state_string': 'created',
         'properties': {},
     }
 
+    @defer.inlineCallbacks
     def setUp(self):
-        self.setup_test_reactor()
-        self.master = fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
+        self.setup_test_reactor(auto_tear_down=False)
+        self.master = yield fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
         self.rtype = builds.Build(self.master)
+
+        yield self.master.db.insert_test_data([
+            fakedb.Builder(id=10),
+            fakedb.Master(id=824),
+            fakedb.Worker(id=20, name='wrk'),
+            fakedb.Buildset(id=999),
+            fakedb.BuildRequest(id=499, buildsetid=999, builderid=10),
+            fakedb.Build(
+                id=99, builderid=10, masterid=824, workerid=20, buildrequestid=499, number=42
+            ),
+        ])
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.tear_down_test_reactor()
 
     @defer.inlineCallbacks
     def do_test_callthrough(
@@ -403,7 +421,7 @@ class Build(interfaces.InterfaceTests, TestReactorMixin, unittest.TestCase):
             buildrequestid=13,
             workerid=20,
             exp_events=[
-                (('builders', '10', 'builds', '1', 'new'), self.new_build_event),
+                (('builders', '10', 'builds', '43', 'new'), self.new_build_event),
                 (('builds', '100', 'new'), self.new_build_event),
                 (('workers', '20', 'builds', '100', 'new'), self.new_build_event),
             ],

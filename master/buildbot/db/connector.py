@@ -46,7 +46,9 @@ from buildbot.db import test_results
 from buildbot.db import users
 from buildbot.db import workers
 from buildbot.util import service
+from buildbot.util.deferwaiter import DeferWaiter
 from buildbot.util.sautils import get_upsert_method
+from buildbot.util.twisted import async_to_deferred
 
 upgrade_message = textwrap.dedent("""\
 
@@ -67,7 +69,8 @@ class AbstractDBConnector(service.ReconfigurableServiceMixin, service.AsyncMulti
 
     @defer.inlineCallbacks
     def setup(self):
-        self.configured_url = yield self.master.get_db_url(self.master.config)
+        if self.configured_url is None:
+            self.configured_url = yield self.master.get_db_url(self.master.config)
 
     @defer.inlineCallbacks
     def reconfigServiceWithBuildbotConfig(self, new_config):
@@ -147,6 +150,7 @@ class DBConnector(AbstractDBConnector):
         self._engine = enginestrategy.create_engine(db_url, basedir=self.basedir)
         self.upsert = get_upsert_method(self._engine)
         self.pool = pool.DBThreadPool(self._engine, reactor=self.master.reactor, verbose=verbose)
+        self._db_tasks_waiter = DeferWaiter()
 
         # make sure the db is up to date, unless specifically asked not to
         if check_version:
@@ -161,6 +165,19 @@ class DBConnector(AbstractDBConnector):
                     log.msg(l)
                 raise exceptions.DatabaseNotReadyError()
 
+    @async_to_deferred
+    async def _shutdown(self) -> None:
+        """
+        Called by stopService, except in test context
+        as most tests don't call startService
+        """
+        await self._db_tasks_waiter.wait()
+
+    @defer.inlineCallbacks
+    def stopService(self):
+        yield self._shutdown()
+        yield super().stopService()
+
     def _doCleanup(self):
         """
         Perform any periodic database cleanup tasks.
@@ -174,3 +191,6 @@ class DBConnector(AbstractDBConnector):
         d = self.changes.pruneChanges(self.master.config.changeHorizon)
         d.addErrback(log.err, 'while pruning changes')
         return d
+
+    def run_db_task(self, deferred_task: defer.Deferred) -> None:
+        self._db_tasks_waiter.add(deferred_task)
