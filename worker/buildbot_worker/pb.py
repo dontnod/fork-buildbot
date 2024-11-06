@@ -403,8 +403,7 @@ class BotPbLike(BotBase):
                 if dir not in wanted_dirs:
                     if self.delete_leftover_dirs:
                         log.msg(
-                            f"Deleting directory '{dir}' that is not being "
-                            "used by the buildmaster"
+                            f"Deleting directory '{dir}' that is not being used by the buildmaster"
                         )
                         try:
                             shutil.rmtree(dir)
@@ -643,7 +642,6 @@ class Worker(WorkerBase):
         passwd,
         basedir,
         keepalive,
-        usePTY=None,
         keepaliveTimeout=None,
         umask=None,
         maxdelay=None,
@@ -657,7 +655,6 @@ class Worker(WorkerBase):
         delete_leftover_dirs=False,
         proxy_connection_string=None,
     ):
-        assert usePTY is None, "worker-side usePTY is not supported anymore"
         assert connection_string is None or (buildmaster_host, port) == (
             None,
             None,

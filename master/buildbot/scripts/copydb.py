@@ -43,6 +43,7 @@ def _copy_database_in_reactor(config):
         return 1
 
     print_debug = not config["quiet"]
+    ignore_fk_error_rows = config['ignore-fk-error-rows']
 
     def print_log(*args, **kwargs):
         if print_debug:
@@ -55,12 +56,19 @@ def _copy_database_in_reactor(config):
     ):
         config_file = base.getConfigFileFromTac(config['basedir'])
 
+    if not config_file:
+        return 1
+
     with base.captureErrors(
         config_module.ConfigErrors, f"Unable to load '{config_file}' from '{config['basedir']}':"
     ):
         master_src_cfg = base.loadConfig(config, config_file)
         master_dst_cfg = base.loadConfig(config, config_file)
-        master_dst_cfg.db["db_url"] = config["destination_url"]
+
+    if not master_src_cfg or not master_dst_cfg:
+        return 1
+
+    master_dst_cfg.db["db_url"] = config["destination_url"]
 
     print_log(f"Copying database ({master_src_cfg.db['db_url']}) to ({config['destination_url']})")
 
@@ -80,12 +88,49 @@ def _copy_database_in_reactor(config):
     master_dst.config = master_dst_cfg
     yield master_dst.db.setup(check_version=False, verbose=not config["quiet"])
     yield master_dst.db.model.upgrade()
-    yield _copy_database_with_db(master_src.db, master_dst.db, print_log)
+    yield _copy_database_with_db(master_src.db, master_dst.db, ignore_fk_error_rows, print_log)
     return 0
 
 
+def _thd_check_row_foreign_keys(table_name, row_dict, column_name, id_rows, print_log):
+    if column_name not in row_dict:
+        return True
+
+    value = row_dict[column_name]
+    if value is None:
+        return True
+
+    if value not in id_rows:
+        row_str = repr(row_dict)[0:200]
+        print_log(
+            f'Ignoring row from {table_name} because {column_name}={value} foreign key '
+            f'constraint failed. Row: {row_str}'
+        )
+        return False
+
+    return True
+
+
+def _thd_check_rows_foreign_keys(table_name, row_dicts, column_name, id_rows, print_log):
+    return [
+        row_dict
+        for row_dict in row_dicts
+        if _thd_check_row_foreign_keys(table_name, row_dict, column_name, id_rows, print_log)
+    ]
+
+
 @defer.inlineCallbacks
-def _copy_single_table(src_db, dst_db, table, table_name, buildset_to_parent_buildid, print_log):
+def _copy_single_table(
+    metadata,
+    src_db,
+    dst_db,
+    table_name,
+    buildset_to_parent_buildid,
+    buildset_to_rebuilt_buildid,
+    ignore_fk_error_rows,
+    print_log,
+):
+    table = metadata.tables[table_name]
     column_keys = table.columns.keys()
 
     rows_queue = queue.Queue(32)
@@ -93,12 +138,46 @@ def _copy_single_table(src_db, dst_db, table, table_name, buildset_to_parent_bui
     total_count = [0]
 
     autoincrement_foreign_key_column = None
+    foreign_key_check_columns = []
+
     for column_name, column in table.columns.items():
         if not column.foreign_keys and column.primary_key and isinstance(column.type, sa.Integer):
             autoincrement_foreign_key_column = column_name
 
+        for fk in column.foreign_keys:
+            if table_name == 'buildsets' and column_name in ('parent_buildid', 'rebuilt_buildid'):
+                continue
+            if table_name == 'changes' and column_name in ('parent_changeids',):
+                # TODO: not currently handled because column refers to the same table
+                continue
+            foreign_key_check_columns.append((column_name, fk.column))
+
+    def tdh_query_all_column_rows(conn, column):
+        q = sa.select(column).select_from(column.table)
+        result = conn.execute(q)
+
+        # Load data incrementally in order to control maximum used memory size
+        ids = set()
+        while True:
+            chunk = result.fetchmany(10000)
+            if not chunk:
+                break
+            for row in chunk:
+                ids.add(getattr(row, column.name))
+        return ids
+
+    got_error = False
+
     def thd_write(conn):
         max_column_id = 0
+
+        foreign_key_check_rows = []
+        if ignore_fk_error_rows:
+            foreign_key_check_rows = [
+                (column_name, tdh_query_all_column_rows(conn, fk_column))
+                for column_name, fk_column in foreign_key_check_columns
+            ]
+
         while True:
             try:
                 rows = rows_queue.get(timeout=1)
@@ -110,7 +189,9 @@ def _copy_single_table(src_db, dst_db, table, table_name, buildset_to_parent_bui
                             seq_name = f"{table_name}_{autoincrement_foreign_key_column}_seq"
                             transaction = conn.begin()
                             conn.execute(
-                                f"ALTER SEQUENCE {seq_name} RESTART WITH {max_column_id + 1}"
+                                sa.text(
+                                    f"ALTER SEQUENCE {seq_name} RESTART WITH {max_column_id + 1}"
+                                )
                             )
                             transaction.commit()
 
@@ -123,6 +204,12 @@ def _copy_single_table(src_db, dst_db, table, table_name, buildset_to_parent_bui
                     for row in row_dicts:
                         max_column_id = max(max_column_id, row[autoincrement_foreign_key_column])
 
+                if ignore_fk_error_rows:
+                    for column_name, id_rows in foreign_key_check_rows:
+                        row_dicts = _thd_check_rows_foreign_keys(
+                            table_name, row_dicts, column_name, id_rows, print_log
+                        )
+
                 if table_name == "buildsets":
                     for row_dict in row_dicts:
                         if row_dict["parent_buildid"] is not None:
@@ -132,8 +219,25 @@ def _copy_single_table(src_db, dst_db, table, table_name, buildset_to_parent_bui
                             ))
                         row_dict["parent_buildid"] = None
 
+                        if row_dict['rebuilt_buildid'] is not None:
+                            buildset_to_rebuilt_buildid.append((
+                                row_dict['id'],
+                                row_dict['rebuilt_buildid'],
+                            ))
+                        row_dict['rebuilt_buildid'] = None
+
             except queue.Empty:
                 continue
+            except Exception:
+                nonlocal got_error
+                got_error = True
+                # unblock queue
+                try:
+                    rows_queue.get(timeout=1)
+                    rows_queue.task_done()
+                except queue.Empty:
+                    pass
+                raise
 
             try:
                 written_count[0] += len(rows)
@@ -144,16 +248,17 @@ def _copy_single_table(src_db, dst_db, table, table_name, buildset_to_parent_bui
 
                 if len(row_dicts) > 0:
                     conn.execute(table.insert(), row_dicts)
+                    conn.commit()
 
             finally:
                 rows_queue.task_done()
 
     def thd_read(conn):
-        q = sa.select([sa.sql.func.count()]).select_from(table)
+        q = sa.select(sa.sql.func.count()).select_from(table)
         total_count[0] = conn.execute(q).scalar()
 
         result = conn.execute(sa.select(table))
-        while True:
+        while not got_error:
             chunk = result.fetchmany(10000)
             if not chunk:
                 break
@@ -161,19 +266,27 @@ def _copy_single_table(src_db, dst_db, table, table_name, buildset_to_parent_bui
 
         rows_queue.put(None)
 
+    error: Exception | None = None
     tasks = [src_db.pool.do(thd_read), dst_db.pool.do(thd_write)]
-    yield defer.gatherResults(tasks)
+    for d in tasks:
+        try:
+            yield d
+        except Exception as e:
+            error = e
 
     rows_queue.join()
 
+    if error is not None:
+        raise error
+
 
 @defer.inlineCallbacks
-def _copy_database_with_db(src_db, dst_db, print_log):
+def _copy_database_with_db(src_db, dst_db, ignore_fk_error_rows, print_log):
     # Tables need to be specified in correct order so that tables that other tables depend on are
     # copied first.
     table_names = [
-        # Note that buildsets.parent_buildid introduces circular dependency.
-        # It is handled separately
+        # Note that buildsets.parent_buildid and rebuilt_buildid introduce circular dependency.
+        # They are handled separately
         "buildsets",
         "buildset_properties",
         "projects",
@@ -220,11 +333,18 @@ def _copy_database_with_db(src_db, dst_db, print_log):
 
     # Not a dict so that the values are inserted back in predictable order
     buildset_to_parent_buildid = []
+    buildset_to_rebuilt_buildid = []
 
     for table_name in table_names:
-        table = metadata.tables[table_name]
         yield _copy_single_table(
-            src_db, dst_db, table, table_name, buildset_to_parent_buildid, print_log
+            metadata,
+            src_db,
+            dst_db,
+            table_name,
+            buildset_to_parent_buildid,
+            buildset_to_rebuilt_buildid,
+            ignore_fk_error_rows,
+            print_log,
         )
 
     def thd_write_buildset_parent_buildid(conn):
@@ -249,5 +369,28 @@ def _copy_database_with_db(src_db, dst_db, print_log):
             )
 
     yield dst_db.pool.do(thd_write_buildset_parent_buildid)
+
+    def thd_write_buildset_rebuilt_buildid(conn):
+        written_count = 0
+        for rows in misc.chunkify_list(buildset_to_rebuilt_buildid, 10000):
+            q = model.Model.buildsets.update()
+            q = q.where(model.Model.buildsets.c.id == sa.bindparam('_id'))
+            q = q.values({'rebuilt_buildid': sa.bindparam('rebuilt_buildid')})
+
+            written_count += len(rows)
+            print_log(
+                f"Copying {len(rows)} items ({written_count}/{len(buildset_to_rebuilt_buildid)}) "
+                f"for buildset.rebuilt_buildid field"
+            )
+
+            conn.execute(
+                q,
+                [
+                    {'_id': buildset_id, 'rebuilt_buildid': rebuilt_buildid}
+                    for buildset_id, rebuilt_buildid in rows
+                ],
+            )
+
+    yield dst_db.pool.do(thd_write_buildset_rebuilt_buildid)
 
     print_log("Copy complete")

@@ -66,7 +66,7 @@ pytz==2024.2
 PyYAML==6.0.2
 requests==2.32.3
 responses==0.25.3
-ruff==0.7.0
+ruff==0.7.2
 s3transfer==0.10.3
 service-identity==24.1.0
 setuptools-trial==0.6.0
@@ -81,7 +81,7 @@ typing_extensions==4.12.2
 unidiff==0.7.5
 # botocore depends on urllib3<1.27
 urllib3==1.26.19  # pyup: ignore
-Werkzeug==3.0.4
+Werkzeug==3.0.6
 xmltodict==0.14.2
 zope.event==5.0
 zope.interface==7.1.0

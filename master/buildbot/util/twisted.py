@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import inspect
 from functools import wraps
 from typing import TYPE_CHECKING
 
@@ -32,7 +33,9 @@ if TYPE_CHECKING:
     _P = ParamSpec('_P')
 
 
-def async_to_deferred(fn: Callable[_P, Coroutine[Any, Any, _T]]):
+def async_to_deferred(
+    fn: Callable[_P, Coroutine[Any, Any, _T]],
+) -> Callable[_P, defer.Deferred[_T]]:
     @wraps(fn)
     def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> defer.Deferred[_T]:
         try:
@@ -41,3 +44,10 @@ def async_to_deferred(fn: Callable[_P, Coroutine[Any, Any, _T]]):
             return defer.fail(e)
 
     return wrapper
+
+
+async def any_to_async(value: Coroutine[Any, Any, _T] | defer.Deferred[_T] | _T) -> _T:
+    if inspect.isawaitable(value):
+        # defer.Deferred is awaitable too
+        return await value
+    return value

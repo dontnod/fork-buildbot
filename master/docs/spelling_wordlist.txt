@@ -1006,6 +1006,7 @@ wasn
 webapp
 webdav
 webhook
+webhooks
 webpack
 webserver
 websocket
@@ -1041,6 +1042,7 @@ Xen
 xf
 xvfb
 yaml
+yarnpkg
 Zope
 zsh
 zstd

@@ -54,6 +54,7 @@ if runtime.platformType == 'win32':
     import win32api
     import win32con
     import win32job
+    import win32process
 
 
 def win32_batch_quote(cmd_list, unicode_encoding='utf-8'):
@@ -389,7 +390,7 @@ class RunProcess:
                 if v is not None:
                     if not isinstance(v, str):
                         raise RuntimeError(
-                            "'env' values must be strings or " f"lists; key '{key}' is incorrect"
+                            f"'env' values must be strings or lists; key '{key}' is incorrect"
                         )
                     newenv[key] = p.sub(subst, v)
 
@@ -638,10 +639,10 @@ class RunProcess:
                     processProtocol, executable, args, env, path, usePTY=usePTY
                 )
             pHandle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, False, int(process.pid))
-
-            # use JobObject to group subprocesses
-            self.job_object = self._create_job_object()
-            win32job.AssignProcessToJobObject(self.job_object, pHandle)
+            if win32process.GetExitCodeProcess(pHandle) == win32con.STILL_ACTIVE:
+                # use JobObject to group subprocesses
+                self.job_object = self._create_job_object()
+                win32job.AssignProcessToJobObject(self.job_object, pHandle)
             return process
 
         # use the ProcGroupProcess class, if available
