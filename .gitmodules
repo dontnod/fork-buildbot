@@ -1,0 +1,4 @@
+[submodule "dne_grid"]
+	path = www/react-dne-grid_view
+	url = https://github.com/dontnod/DNE-Buildbot-React-grid-view-plugin.git
+	branch = main
