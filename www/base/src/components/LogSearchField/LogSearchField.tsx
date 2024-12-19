@@ -34,7 +34,7 @@ export const LogSearchField = ({currentResult, totalResults,
                                 inputRef}: LogSearchButtonProps) => {
   const [searchText, setSearchText] = useState<string>('');
   const [hasFocus, setHasFocus] = useState<boolean>(false);
-  const [isCaseSensitive, setIsCaseSensitive] = useState<boolean>(true);
+  const [isCaseSensitive, setIsCaseSensitive] = useState<boolean>(false);
   const [useRegex, setUseRegex] = useState<boolean>(false);
 
   const onSearchTextChanged = (text: string) => {
