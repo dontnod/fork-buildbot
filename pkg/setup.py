@@ -29,5 +29,7 @@ setup(
     install_requires=[
         "setuptools >= 21.2.1",
     ],
+    setuptools_git_versioning={"enabled": True},
+    setup_requires=['setuptools-git-versioning>=2.0,<3'],
     classifiers=['License :: OSI Approved :: GNU General Public License v2 (GPLv2)'],
 )
