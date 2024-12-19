@@ -24,6 +24,7 @@ from twisted.internet import defer
 
 from buildbot.db import NULL
 from buildbot.db import base
+from buildbot.process.results import SUCCESS
 from buildbot.util import epoch2datetime
 from buildbot.warnings import warn_deprecated
 
@@ -128,11 +129,18 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
         offset = 0
         increment = 1000
         matchssBuild = {(ss.repository, ss.branch, ss.codebase) for ss in ssBuild}
+
+        if self.master is None:
+            return None
+        max_successful_result = self.master.config.successful_build_max_result
+        if max_successful_result is None:
+            max_successful_result = SUCCESS
+
         while rv is None:
             # Get some recent successful builds on the same builder
             prevBuilds = yield self._getRecentBuilds(
                 whereclause=(
-                    (tbl.c.builderid == builderid) & (tbl.c.number < number) & (tbl.c.results == 0)
+                    (tbl.c.builderid == builderid) & (tbl.c.number < number) & (tbl.c.results >= SUCCESS) & (tbl.c.results <= max_successful_result)
                 ),
                 offset=offset,
                 limit=increment,
