@@ -17,6 +17,7 @@
 
 import {observer} from "mobx-react";
 import {Link} from "react-router-dom";
+import moment from 'moment';
 import {
   Build,
   Buildrequest,
@@ -24,7 +25,7 @@ import {
   useDataAccessor,
   useDataApiDynamicQuery,
 } from "buildbot-data-js";
-import {BuildLinkWithSummaryTooltip} from "buildbot-ui";
+import {BuildLinkWithSummaryTooltip, dateFormat} from "buildbot-ui";
 import {LoadingDiv} from "../../components/LoadingDiv/LoadingDiv";
 import {
   RawData,
@@ -75,6 +76,27 @@ export const BuildViewDebugTab = observer(({build, buildset, buildrequest}:
     </>;
   }
 
+  const renderBuildTimings = () => {
+    if (build === null) {
+      return <></>
+    }
+
+    const timingsObject: {[key: string] : string} = {
+      started_at: dateFormat(build.started_at),
+    };
+    if (build.complete_at !== null) {
+      timingsObject['complete_at'] = dateFormat(build.complete_at);
+
+      const buildDuration = moment.duration((build.complete_at - build.started_at) * 1000);
+      const buildDurationUTC = moment.utc(buildDuration.asMilliseconds());
+      timingsObject['duration'] = buildDurationUTC.format("HH:mm:ss");
+    }
+    return <>
+      <TableHeading>Build:</TableHeading>
+      <RawData data={timingsObject} />
+    </>;
+  }
+
   return (
     <>
       <TableHeading>
@@ -83,6 +105,7 @@ export const BuildViewDebugTab = observer(({build, buildset, buildrequest}:
       <RawData data={buildrequest.toObject()} displayCallback={displayBuildRequestEntry}/>
       <TableHeading>Buildset:</TableHeading>
       <RawData data={buildset.toObject()} displayCallback={displayBuildsetEntry}/>
+      {renderBuildTimings()}
       <TableHeading>Previous builds on the same build directory:</TableHeading>
       {renderPrevBuildOnBuildDir()}
     </>
